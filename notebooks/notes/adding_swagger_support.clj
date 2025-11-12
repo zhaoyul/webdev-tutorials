@@ -3,20 +3,23 @@
 
 ;; # Adding Swagger Support
 ;;
-;; This notebook demonstrates how to add Swagger API documentation 
+;; This notebook demonstrates how to add Swagger API documentation
 ;; to our Clojure web service using Reitit.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defn load-libraries []
   (require '[ring.adapter.jetty :as jetty])
   (require '[ring.util.response :as response])
-  (require '[metosin.reitit.coercion.malli])
-  (require '[metosin.reitit.swagger :as swagger])
-  (require '[metosin.reitit.swagger-ui :as swagger-ui])
-  (require '[metosin.reitit.ring :as ring])
-  (require '[metosin.reitit.ring.middleware.muuntaja :as muuntaja])
-  (require '[metosin.reitit.ring.middleware.parameters :as parameters])
-  (require '[metosin.reitit.ring.coercion :as coercion])
+  (require '[reitit.coercion.malli :as malli])
+
+  (require '[reitit.swagger :as swagger])
+  (require '[reitit.swagger-ui :as swagger-ui])
+
+  (require '[reitit.ring :as ring])
+
+  (require '[reitit.ring.middleware.muuntaja :as muuntaja])
+  (require '[reitit.ring.middleware.parameters :as parameters])
+  (require ' [reitit.ring.coercion :as coercion])
   (require '[muuntaja.core :as m]))
 
 (load-libraries)
@@ -50,45 +53,45 @@
     {:get {:summary "Home endpoint"
            :description "Returns a welcome message"
            :responses {200 {:body {:message string?}}}
-           :handler (fn [_] {:status 200 
-                            :body {:message "Welcome to the Web Tutorial API"}})}}]
-   
+           :handler (fn [_] {:status 200
+                             :body {:message "Welcome to the Web Tutorial API"}})}}]
+
    ["/users"
     {:get {:summary "Get all users"
            :description "Returns a list of all users in the system"
            :parameters {}
            :responses {200 {:body {:users vector?}}}
-           :handler (fn [_] {:status 200 
-                            :body {:users [{:id 1 :name "Alice" :email "alice@example.com"}
-                                          {:id 2 :name "Bob" :email "bob@example.com"}]}})}
+           :handler (fn [_] {:status 200
+                             :body {:users [{:id 1 :name "Alice" :email "alice@example.com"}
+                                            {:id 2 :name "Bob" :email "bob@example.com"}]}})}
      :post {:summary "Create a new user"
             :description "Creates a new user with the provided information"
             :parameters {:body {:name string? :email string?}}
             :responses {201 {:body {:id int? :name string? :email string?}}}
-            :handler (fn [request] 
-                      {:status 201 
-                       :body {:id (inc (rand-int 1000)) 
-                              :name (get-in request [:parameters :body :name])
-                              :email (get-in request [:parameters :body :email])}})}}]
-   
+            :handler (fn [request]
+                       {:status 201
+                        :body {:id (inc (rand-int 1000))
+                               :name (get-in request [:parameters :body :name])
+                               :email (get-in request [:parameters :body :email])}})}}]
+
    ["/users/:id"
     {:get {:summary "Get user by ID"
            :description "Returns a specific user by their ID"
            :parameters {:path {:id int?}}
            :responses {200 {:body {:id int? :name string? :email string?}}}
-           :handler (fn [request] 
-                     {:status 200 
-                      :body {:id (get-in request [:parameters :path :id])
-                             :name (str "User " (get-in request [:parameters :path :id]))
-                             :email (str "user" (get-in request [:parameters :path :id]) "@example.com")}})}}
-    
+           :handler (fn [request]
+                      {:status 200
+                       :body {:id (get-in request [:parameters :path :id])
+                              :name (str "User " (get-in request [:parameters :path :id]))
+                              :email (str "user" (get-in request [:parameters :path :id]) "@example.com")}})}}
+
     {:delete {:summary "Delete a user"
               :description "Deletes a user by their ID"
               :parameters {:path {:id int?}}
               :responses {200 {:body {:message string?}}}
-              :handler (fn [request] 
-                        {:status 200 
-                         :body {:message (str "User " (get-in request [:parameters :path :id]) " deleted")}})}}]])
+              :handler (fn [request]
+                         {:status 200
+                          :body {:message (str "User " (get-in request [:parameters :path :id]) " deleted")}})}}]])
 
 ;; ## Creating the Reitit router
 ;;
@@ -96,19 +99,19 @@
 
 (def app
   (ring/ring-handler
-    (ring/router
-      [swagger-docs
-       ["/api" api-routes]
-       ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "/"})]]
-      {:data {:coercion (metosin.reitit.coercion.malli/create)
-              :muuntaja m/instance
-              :middleware [parameters/parameters-middleware
-                           muuntaja/format-middleware
-                           coercion/coercion-middleware]}})
-    (ring/create-default-handler
-      {:not-found (constantly {:status 404 :body "Not Found"})
-       :method-not-allowed (constantly {:status 405 :body "Method Not Allowed"})
-       :not-acceptable (constantly {:status 406 :body "Not Acceptable"})})))
+   (ring/router
+    [swagger-docs
+     ["/api" api-routes]
+     ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "/"})]]
+    {:data {:coercion malli/coercion
+            :muuntaja m/instance
+            :middleware [parameters/parameters-middleware
+                         muuntaja/format-middleware
+                         #_coercion/coercion-middleware]}})
+   (ring/create-default-handler
+    {:not-found (constantly {:status 404 :body "Not Found"})
+     :method-not-allowed (constantly {:status 405 :body "Method Not Allowed"})
+     :not-acceptable (constantly {:status 406 :body "Not Acceptable"})})))
 
 ;; ## Testing the API endpoints
 ;;
@@ -163,118 +166,66 @@
   [["/products"
 
     {:get {:summary "查询产品"
-
            :description "根据可选的筛选条件查询产品"
-
            :parameters {:query [:map {:closed true}
-
                                 [:category {:optional true} :string]
-
                                 [:min-price {:optional true} :double]
-
                                 [:max-price {:optional true} :double]
-
                                 [:page {:optional true} :int]]}
-
            :responses {200 {:body [:map
-
                                    [:products [:vector [:map
-
                                                         [:id :int]
-
                                                         [:name :string]
-
                                                         [:price :double]
-
                                                         [:category :string]]]]
-
                                    [:total :int]
-
                                    [:page :int]]}}
-
-           :handler (fn [request] 
-
+           :handler (fn [request]
                       (let [query-params (get-in request [:parameters :query] {})]
-
                         {:status 200
-
                          :body {:products [{:id 1 :name "笔记本电脑" :price 999.99 :category "电子产品"}
-
                                            {:id 2 :name "书籍" :price 19.99 :category "教育"}]
-
                                 :total 2 :page (get query-params :page 1)}}))}}]
 
-   
+
 
    ["/products/:id"
-
     {:get {:summary "根据ID获取产品"
-
            :description "返回特定产品的详细信息"
-
            :parameters {:path [:map [:id :int]]}
-
            :responses {200 {:body [:map
-
                                    [:id :int]
-
                                    [:name :string]
-
                                    [:description :string]
-
                                    [:price :double]
-
                                    [:category :string]]}}
 
-           :handler (fn [request] 
-
-                     {:status 200 
-
-                      :body {:id (get-in request [:parameters :path :id])
-
-                             :name (str "产品 " (get-in request [:parameters :path :id]))
-
-                             :description (str "产品 " (get-in request [:parameters :path :id]) " 的描述")
-
-                             :price (double (+ 10 (get-in request [:parameters :path :id])))
-
-                             :category "通用"}})}
-
-     :put {:summary "更新产品"
-
-           :description "使用新信息更新现有产品"
-
-           :parameters {:path [:map [:id :int]]
-
-                        :body [:map
-
-                               [:name {:optional true} :string]
-
-                               [:description {:optional true} :string]
-
-                               [:price {:optional true} :double]
-
-                               [:category {:optional true} :string]]}
-
-           :responses {200 {:body [:map
-
-                                   [:id :int]
-
-                                   [:name :string]
-
-                                   [:description :string]
-
-                                   [:price :double]
-
-                                   [:category :string]]}}
-
-           :handler (fn [request] 
-
+           :handler (fn [request]
                       {:status 200
+                       :body {:id (get-in request [:parameters :path :id])
+                              :name (str "产品 " (get-in request [:parameters :path :id]))
+                              :description (str "产品 " (get-in request [:parameters :path :id]) " 的描述")
+                              :price (double (+ 10 (get-in request [:parameters :path :id])))
+                              :category "通用"}})}
+     :put {:summary "更新产品"
+           :description "使用新信息更新现有产品"
+           :parameters {:path [:map [:id :int]]
+                        :body [:map
+                               [:name {:optional true} :string]
+                               [:description {:optional true} :string]
+                               [:price {:optional true} :double]
+                               [:category {:optional true} :string]]}
+           :responses {200 {:body [:map
+                                   [:id :int]
+                                   [:name :string]
+                                   [:description :string]
+                                   [:price :double]
+                                   [:category :string]]}}
 
+           :handler (fn [request]
+                      {:status 200
                        :body (merge {:id (get-in request [:parameters :path :id])}
-
-                                    (get-in request [:parameters :body]))})}}]]
+                                    (get-in request [:parameters :body]))})}}]])
 
 ;; ## Setting up the complete application with detailed API
 ;;
@@ -282,20 +233,20 @@
 
 (def complete-app
   (ring/ring-handler
-    (ring/router
-      [swagger-docs
-       ["/api" api-routes]
-       ["/api" detailed-api-routes]
-       ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "/"})]]
-      {:data {:coercion (metosin.reitit.coercion.malli/create)
-              :muuntaja m/instance
-              :middleware [parameters/parameters-middleware
-                           muuntaja/format-middleware
-                           coercion/coercion-middleware]}})
-    (ring/create-default-handler
-      {:not-found (constantly {:status 404 :body "Not Found"})
-       :method-not-allowed (constantly {:status 405 :body "Method Not Allowed"})
-       :not-acceptable (constantly {:status 406 :body "Not Acceptable"})})))
+   (ring/router
+    [swagger-docs
+     ["/api" api-routes]
+     ["/api" detailed-api-routes]
+     ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "/"})]]
+    {:data {:coercion malli/coercion
+            :muuntaja m/instance
+            :middleware [parameters/parameters-middleware
+                         muuntaja/format-middleware
+                         #_coercion/coercion-middleware]}})
+   (ring/create-default-handler
+    {:not-found (constantly {:status 404 :body "Not Found"})
+     :method-not-allowed (constantly {:status 405 :body "Method Not Allowed"})
+     :not-acceptable (constantly {:status 406 :body "Not Acceptable"})})))
 
 ;; ## Starting a server with Swagger documentation
 ;;

@@ -5,12 +5,10 @@
         ring/ring-jetty-adapter {:mvn/version "1.13.1"}
         metosin/muuntaja {:mvn/version "0.6.10"}
         ;; Router
-        metosin/reitit {:mvn/version "0.7.2"}
-        ;; Swagger support
-        metosin/reitit-swagger {:mvn/version "0.7.2"}
-        metosin/reitit-swagger-ui {:mvn/version "0.7.2"}
+        metosin/reitit {:mvn/version "0.9.2"}
+
         ;; Schema validation
-        metosin/malli {:mvn/version "0.17.0"}
+        metosin/malli {:mvn/version "0.18.0"}
         ;; Clerk notebook
         io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
  :aliases
