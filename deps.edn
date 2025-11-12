@@ -1,0 +1,18 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.3"}}
+ :aliases
+ {:run-m {:main-opts ["-m" "rc.web-tutorial"]}
+  :run-x {:ns-default rc.web-tutorial
+          :exec-fn greet
+          :exec-args {:name "Clojure"}}
+  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
+          :ns-default build}
+  :dev  {:extra-deps  {com.lambdaisland/classpath      {:mvn/version "0.5.48"}
+                       criterium/criterium             {:mvn/version "0.4.6"}
+                       org.clojure/tools.namespace     {:mvn/version "1.4.4"}
+                       org.clojure/test.check          {:mvn/version "1.1.1"}}
+         :extra-paths ["env/dev/clj" "env/dev/resources" "test/clj" "target/classes/cljsbuild"]}
+  :test {:extra-paths ["test"]
+         :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
+                      io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}}}}}

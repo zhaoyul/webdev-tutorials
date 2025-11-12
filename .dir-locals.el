@@ -1,0 +1,7 @@
+((clojure-mode . ((cider-clojure-cli-aliases . ":dev:test")
+                  (eval . (put-clojure-indent 'rf/reg-fx :defn))
+                  (eval . (put-clojure-indent 'kf/reg-event-fx :defn))
+                  (eval . (put-clojure-indent 'kf/reg-event-db :defn))
+                  (eval . (put-clojure-indent 'rf/reg-event-db :defn))
+                  (eval . (put-clojure-indent 'rf/reg-event-fx :defn))
+                  (eval . (put-clojure-indent 'rf/reg-sub :defn)))))
