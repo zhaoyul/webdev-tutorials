@@ -159,65 +159,122 @@
 ;; Let's create a more comprehensive API with different types of parameters:
 
 (def detailed-api-routes
+
   [["/products"
-    {:get {:summary "Search for products"
-           :description "Search for products with optional filters"
+
+    {:get {:summary "查询产品"
+
+           :description "根据可选的筛选条件查询产品"
+
            :parameters {:query [:map {:closed true}
+
                                 [:category {:optional true} :string]
+
                                 [:min-price {:optional true} :double]
+
                                 [:max-price {:optional true} :double]
+
                                 [:page {:optional true} :int]]}
+
            :responses {200 {:body [:map
+
                                    [:products [:vector [:map
+
                                                         [:id :int]
+
                                                         [:name :string]
+
                                                         [:price :double]
+
                                                         [:category :string]]]]
+
                                    [:total :int]
+
                                    [:page :int]]}}
+
            :handler (fn [request] 
+
                       (let [query-params (get-in request [:parameters :query] {})]
+
                         {:status 200
-                         :body {:products [{:id 1 :name "Laptop" :price 999.99 :category "Electronics"}
-                                           {:id 2 :name "Book" :price 19.99 :category "Education"}]
+
+                         :body {:products [{:id 1 :name "笔记本电脑" :price 999.99 :category "电子产品"}
+
+                                           {:id 2 :name "书籍" :price 19.99 :category "教育"}]
+
                                 :total 2 :page (get query-params :page 1)}}))}}]
+
    
+
    ["/products/:id"
-    {:get {:summary "Get product by ID"
-           :description "Returns detailed information about a specific product"
+
+    {:get {:summary "根据ID获取产品"
+
+           :description "返回特定产品的详细信息"
+
            :parameters {:path [:map [:id :int]]}
+
            :responses {200 {:body [:map
+
                                    [:id :int]
+
                                    [:name :string]
+
                                    [:description :string]
+
                                    [:price :double]
+
                                    [:category :string]]}}
+
            :handler (fn [request] 
-                      {:status 200
-                       :body {:id (get-in request [:parameters :path :id])
-                              :name (str "Product " (get-in request [:parameters :path :id]))
-                              :description (str "Description for product " (get-in request [:parameters :path :id]))
-                              :price (double (+ 10 (get-in request [:parameters :path :id])))
-                              :category "General"}})}]
-    
-    {:put {:summary "Update a product"
-           :description "Updates an existing product with new information"
+
+                     {:status 200 
+
+                      :body {:id (get-in request [:parameters :path :id])
+
+                             :name (str "产品 " (get-in request [:parameters :path :id]))
+
+                             :description (str "产品 " (get-in request [:parameters :path :id]) " 的描述")
+
+                             :price (double (+ 10 (get-in request [:parameters :path :id])))
+
+                             :category "通用"}})}
+
+     :put {:summary "更新产品"
+
+           :description "使用新信息更新现有产品"
+
            :parameters {:path [:map [:id :int]]
+
                         :body [:map
+
                                [:name {:optional true} :string]
+
                                [:description {:optional true} :string]
+
                                [:price {:optional true} :double]
+
                                [:category {:optional true} :string]]}
+
            :responses {200 {:body [:map
+
                                    [:id :int]
+
                                    [:name :string]
+
                                    [:description :string]
+
                                    [:price :double]
+
                                    [:category :string]]}}
+
            :handler (fn [request] 
+
                       {:status 200
+
                        :body (merge {:id (get-in request [:parameters :path :id])}
-                                    (get-in request [:parameters :body]))})}}]])
+
+                                    (get-in request [:parameters :body]))})}}]]
 
 ;; ## Setting up the complete application with detailed API
 ;;

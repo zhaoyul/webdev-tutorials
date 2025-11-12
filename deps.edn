@@ -13,7 +13,6 @@
         metosin/malli {:mvn/version "0.17.0"}
         ;; Clerk notebook
         io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
- :jvm-opts {"--enable-native-access" "ALL-UNNAMED"}
  :aliases
  {:run-m {:main-opts ["-m" "rc.web-tutorial"]}
   :run-x {:ns-default rc.web-tutorial
@@ -25,6 +24,7 @@
                        criterium/criterium             {:mvn/version "0.4.6"}
                        org.clojure/tools.namespace     {:mvn/version "1.4.4"}
                        org.clojure/test.check          {:mvn/version "1.1.1"}}
+         :jvm-opts ["--enable-native-access" "ALL-UNNAMED" "-Djdk.attach.allowAttachSelf"]
          :extra-paths ["env/dev/clj" "env/dev/resources" "test/clj" "target/classes/cljsbuild"]}
   :test {:extra-paths ["test"]
          :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}

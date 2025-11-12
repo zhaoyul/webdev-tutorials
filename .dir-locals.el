@@ -1,4 +1,4 @@
-((clojure-mode . ((cider-clojure-cli-aliases . ":dev:test")
+((clojure-mode . ((cider-clojure-cli-aliases . ":dev:test:nrepl")
                   (eval . (put-clojure-indent 'rf/reg-fx :defn))
                   (eval . (put-clojure-indent 'kf/reg-event-fx :defn))
                   (eval . (put-clojure-indent 'kf/reg-event-db :defn))
