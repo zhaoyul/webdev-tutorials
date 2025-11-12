@@ -1,14 +1,35 @@
 # web-tutorial
 
-FIXME: my new application.
+A comprehensive Clojure web development training template using Clerk notebooks.
 
 ## Installation
 
 Download from https://github.com/rc/web-tutorial
 
+## Training Content
+
+This project contains a complete training curriculum for learning web development with Clojure:
+
+1. **01_starting_web_server.clj** - Introduction to basic web servers
+2. **02_starting_ring_server.clj** - Building Ring-based web applications
+3. **03_adding_simple_middleware.clj** - Creating and using middleware
+4. **04_demonstrating_middleware_functionality.clj** - Understanding middleware chains
+5. **05_adding_swagger_support.clj** - API documentation with Swagger
+6. **06_malli_spec_usage.clj** - Data validation with Malli
+
 ## Usage
 
-FIXME: explanation
+### Running Clerk Notebooks
+
+To view and interact with the training notebooks:
+
+```bash
+clojure -M:clerk
+```
+
+This will start Clerk server at http://localhost:7777 where you can browse the notebooks.
+
+### Running the Project Directly
 
 Run the project directly, via `:exec-fn`:
 
@@ -42,21 +63,27 @@ Run that uberjar:
 
     $ java -jar target/web-tutorial-0.1.0-SNAPSHOT.jar
 
-## Options
+## Dependencies
 
-FIXME: listing of options this app accepts.
+The training template includes:
 
-## Examples
+- **Ring** - Web application interface
+- **Reitit** - Fast data-driven router with Swagger support
+- **Malli** - Schema specification and validation
+- **Clerk** - Scientific notebook environment for interactive development
 
-...
+## Training Path
 
-### Bugs
+The notebooks are designed to be completed in order:
 
-...
+1. Start with basic web server concepts
+2. Progress to Ring applications with routing
+3. Learn about middleware patterns
+4. Explore middleware functionality in depth
+5. Add API documentation with Swagger
+6. Implement comprehensive data validation with Malli
 
-### Any Other Sections
-### That You Think
-### Might be Useful
+Each notebook builds upon the concepts from the previous ones, providing a comprehensive introduction to Clojure web development.
 
 ## License
 

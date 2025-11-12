@@ -1,5 +1,19 @@
-{:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.12.3"}}
+{:paths ["src" "resources" "notebooks"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.3"}
+        ;; Web server dependencies
+        ring/ring-core {:mvn/version "1.13.1"}
+        ring/ring-jetty-adapter {:mvn/version "1.13.1"}
+        metosin/muuntaja {:mvn/version "0.6.10"}
+        ;; Router
+        metosin/reitit {:mvn/version "0.7.2"}
+        ;; Swagger support
+        metosin/reitit-swagger {:mvn/version "0.7.2"}
+        metosin/reitit-swagger-ui {:mvn/version "0.7.2"}
+        ;; Schema validation
+        metosin/malli {:mvn/version "0.17.0"}
+        ;; Clerk notebook
+        io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
+ :jvm-opts {"--enable-native-access" "ALL-UNNAMED"}
  :aliases
  {:run-m {:main-opts ["-m" "rc.web-tutorial"]}
   :run-x {:ns-default rc.web-tutorial
@@ -23,4 +37,9 @@
                                         :git/tag "v0.1.11-alpha"
                                         :git/sha "7739dba"}}
         :exec-fn clojure-mcp.main/start-mcp-server
-        :exec-args {:port 7778}}}}
+        :exec-args {:port 7778}}
+  :clerk {:extra-deps {io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
+          :exec-fn nextjournal.clerk/serve!
+          :exec-args {:watch-paths ["notebooks"]
+                      :browse? true
+                      :port 7777}}}}
