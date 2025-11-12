@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+    "clojure-mcp": {
+      "command": "clojure",
+      "args": [
+        "-X:mcp"
+      ],
+      "trust": true
+    }
+  }
+}
