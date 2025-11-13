@@ -2,15 +2,9 @@
 ;;
 ;; 本笔记本演示如何创建一个更复杂的 Ring 服务器
 ;; 具有路由和更好的响应处理。
-
-
 (ns notes.starting-ring-server
   (:require [nextjournal.clerk :as clerk]
-            [ring.adapter.jetty :as jetty]
-            [ring.util.response :as response]
-            [ring.middleware.params :as params]))
-
-
+            [ring.adapter.jetty :as jetty]))
 
 ;; ## 创建具有路由的更复杂处理器
 ;;
@@ -31,21 +25,23 @@
      :headers {"Content-Type" "text/html"}
      :body "<h1>未找到</h1><p>请求的资源未找到。</p>"}))
 
-;; Let's test our route handler:
+;; 测试一下我们的handler
+^{::clerk/auto-expand-results? true}
 (route-handler {:request-method :get :uri "/" :headers {}})
-
+^{::clerk/auto-expand-results? true}
 (route-handler {:request-method :get :uri "/api/users" :headers {}})
-
+^{::clerk/auto-expand-results? true}
 (route-handler {:request-method :get :uri "/nonexistent" :headers {}})
 
-;; ## Using Ring middleware
+;; ## 使用 Ring 中间件
 ;;
-;; Ring middleware allows us to modify requests and responses.
-;; Let's add some common middleware to our handler:
+;; 中间间允许我们修改 requests 和 responses.
+
+;; 看一些例子
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn wrap-logger
-  "Middleware that logs requests"
+  "记录 requests 的中间件"
   [handler]
   (fn [request]
     (let [start-time (System/nanoTime)
@@ -58,7 +54,7 @@
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn wrap-content-type
-  "Middleware that adds default content type if not present"
+  "检查content type, 如果不存在, 则添加"
   [handler]
   (fn [request]
     (let [response (handler request)]
@@ -67,13 +63,14 @@
         response))))
 
 ;; 让我们将中间件与处理器组合：
-^{::clerk/visibility {:code :show :result :hide}}
+^{::clerk/visibility {:code :show :result :hide} ::clerk/auto-expand-results? true}
 (def app
   (-> route-handler
       wrap-logger
       wrap-content-type))
 
 ;; 测试组合的应用程序：
+^{::clerk/auto-expand-results? true}
 (app {:request-method :get :uri "/" :headers {}})
 
 ;; ## 正确提供 JSON 响应

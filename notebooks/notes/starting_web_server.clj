@@ -6,13 +6,13 @@
 (ns notes.starting-web-server
   (:require [nextjournal.clerk :as clerk]
             [ring.util.response :as response]
-            [ring.adapter.jetty :as jetty])
+            [ring.adapter.jetty :as jetty]
+            [ring.adapter.undertow :as undertow])
   (:import [java.net ServerSocket]))
 
 ;; 演示了如何在 Clojure 中启动一个基本的 Web 服务器.
 
 ;; 探讨 HTTP 服务器的基础知识以及如何设置它们.
-
 
 ;; 在 Ring (Clojure 的标准 Web 应用接口) 中, 处理函数 (handler) 只是一个
 ;; 接收请求 map 并返回响应 map 的函数.
@@ -42,12 +42,17 @@
 
 (def port (get-free-port))
 
-(defn start-server []
-  (jetty/run-jetty #'simple-handler {:port port :join? false}))
+(defn start-app [server-type handler options]
+  (case server-type
+    :jetty (jetty/run-jetty handler options)
+    :undertow (undertow/run-undertow handler options)))
+
+(defn start-server [handler]
+  (start-app :jetty handler {:port port :join? false}))
 
 ;; 要启动服务器, 请调用该函数:
 
-(def server (start-server))
+(def server (start-server #'simple-handler))
 (comment
   (def server (start-server))
   ;; 稍后要停止服务器:

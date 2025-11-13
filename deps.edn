@@ -3,6 +3,7 @@
         ;; Web server dependencies
         ring/ring-core {:mvn/version "1.13.1"}
         ring/ring-jetty-adapter {:mvn/version "1.13.1"}
+        luminus/ring-undertow-adapter {:mvn/version "1.4.2"}
         metosin/muuntaja {:mvn/version "0.6.10"}
         ;; Router
         metosin/reitit {:mvn/version "0.9.2"}
@@ -18,18 +19,18 @@
           :exec-args {:name "Clojure"}}
   :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
           :ns-default build}
-  :dev  {:extra-deps  {com.lambdaisland/classpath      {:mvn/version "0.5.48"}
-                       criterium/criterium             {:mvn/version "0.4.6"}
-                       org.clojure/tools.namespace     {:mvn/version "1.4.4"}
-                       org.clojure/test.check          {:mvn/version "1.1.1"}}
-         :jvm-opts ["--enable-native-access" "ALL-UNNAMED" "-Djdk.attach.allowAttachSelf"]
-         :extra-paths ["env/dev/clj" "env/dev/resources" "test/clj" "target/classes/cljsbuild"]}
+  :dev {:extra-deps {com.lambdaisland/classpath {:mvn/version "0.5.48"}
+                     criterium/criterium {:mvn/version "0.4.6"}
+                     org.clojure/tools.namespace {:mvn/version "1.4.4"}
+                     org.clojure/test.check {:mvn/version "1.1.1"}}
+        :jvm-opts ["--enable-native-access" "ALL-UNNAMED" "-Djdk.attach.allowAttachSelf"]
+        :extra-paths ["env/dev/clj" "env/dev/resources" "test/clj" "target/classes/cljsbuild"]}
   :test {:extra-paths ["test"]
          :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
                       io.github.cognitect-labs/test-runner
                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}}}
   :nrepl {:extra-deps {nrepl/nrepl {:mvn/version "1.1.0"}}
-          :main-opts  ["-m" "nrepl.cmdline" "--port" "7778"]}
+          :main-opts ["-m" "nrepl.cmdline" "--port" "7778"]}
   :mcp {:deps {org.slf4j/slf4j-nop {:mvn/version "2.0.16"} ;; Required for stdio server
                com.bhauman/clojure-mcp {:git/url "https://github.com/bhauman/clojure-mcp.git"
                                         :git/tag "v0.1.11-alpha"
