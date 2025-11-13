@@ -1,39 +1,31 @@
 (ns notes.adding-swagger-support
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [ring.adapter.jetty :as jetty]
+            [ring.util.response :as response]
+            [reitit.coercion.malli :as malli]
+            [reitit.swagger :as swagger]
+            [reitit.swagger-ui :as swagger-ui]
+            [reitit.ring :as ring]
+            [reitit.ring.middleware.muuntaja :as muuntaja]
+            [reitit.ring.middleware.parameters :as parameters]
+            [reitit.ring.coercion :as coercion]
+            [muuntaja.core :as m]))
 
 ;; # 添加 Swagger 支持
 ;;
-;; 本笔记本演示如何使用 Reitit 为我们的 Clojure Web 服务添加 Swagger API 文档。
-
-^{::clerk/visibility {:code :hide :result :hide}}
-(defn load-libraries []
-  (require '[ring.adapter.jetty :as jetty])
-  (require '[ring.util.response :as response])
-  (require '[reitit.coercion.malli :as malli])
-
-  (require '[reitit.swagger :as swagger])
-  (require '[reitit.swagger-ui :as swagger-ui])
-
-  (require '[reitit.ring :as ring])
-
-  (require '[reitit.ring.middleware.muuntaja :as muuntaja])
-  (require '[reitit.ring.middleware.parameters :as parameters])
-  (require '[reitit.ring.coercion :as coercion])
-  (require '[muuntaja.core :as m]))
-
-(load-libraries)
+;; 演示如何使用 Reitit 为 Clojure Web 服务添加 Swagger API 文档.
 
 ;; ## Reitit 和 Swagger 介绍
 ;;
-;; Reitit 是一个快速的数据驱动路由器，用于 Clojure。它提供：
-;; - 快速路由
+;; Reitit 是一个方便的数据驱动路由器, 用于 Clojure. 它提供:
+;; - 路由
 ;; - Swagger/OpenAPI 支持
 ;; - 基于模式的输入/输出强制转换
 ;; - 内容协商
 ;;
-;; 我们将使用它来创建一个具有自动 Swagger UI 的文档完善的 API。
+;; 我们将使用它来创建一个具有自动 Swagger UI 的文档完善的 API.
 
-;; 首先，让我们创建一个带有文档的简单 API：
+;; 首先, 让我们创建一个带有文档的简单 API:
 
 (def swagger-docs
   ["/api/swagger.json"
@@ -45,7 +37,7 @@
 
 ;; ## 创建带有文档的 API 端点
 ;;
-;; 让我们定义一些带有详细文档的路由：
+;; 让我们定义一些带有详细文档的路由:
 
 (def api-routes
   [["/"
@@ -94,7 +86,7 @@
 
 ;; ## 创建 Reitit 路由器
 ;;
-;; 现在让我们创建一个将我们的 API 路由与 Swagger 文档相结合的路由器：
+;; 现在让我们创建一个将我们的 API 路由与 Swagger 文档相结合的路由器:
 
 (def app
   (ring/ring-handler
@@ -115,10 +107,10 @@
 
 ;; ## 测试 API 端点
 ;;
-;; 让我们模拟对 API 的请求，看看其行为：
+;; 让我们模拟对 API 的请求, 看看其行为:
 
-;; 对于此示例，我们需要一个辅助函数来模拟参数的处理方式
-;; 在实际的 Reitit 应用程序中，参数将自动强制转换
+;; 对于此示例, 我们需要一个辅助函数来模拟参数的处理方式
+;; 在实际的 Reitit 应用程序中, 参数将自动强制转换
 
 (defn simulate-api-call [path method & [params]]
   {:path path
@@ -137,12 +129,12 @@
 ;; ## Swagger UI 端点
 ;;
 ;; API 将在 /swagger-ui/ 自动提供 Swagger UI
-;; 这为您的 API 提供交互式文档界面。
+;; 这为您的 API 提供交互式文档界面.
 
-;; ## 使用 Malli 定义 API 模式（供以后使用）
+;; ## 使用 Malli 定义 API 模式(供以后使用)
 ;;
-;; 虽然我们现在专注于 Swagger，但也让我们看看如何定义
-;; 将用于文档和验证的模式：
+;; 虽然我们现在专注于 Swagger, 但也让我们看看如何定义
+;; 将用于文档和验证的模式:
 
 (def UserSchema
   [:map
@@ -155,11 +147,11 @@
    [:name :string]
    [:email [:and :string [:re #"^[^\s@]+@[^\s@]+\.[^\s@]+$"]]]])
 
-;; 这些模式可用于文档和运行时验证。
+;; 这些模式可用于文档和运行时验证.
 
 ;; ## 创建更详细的 API 示例
 ;;
-;; 让我们创建一个更全面的 API，具有不同类型的参数：
+;; 让我们创建一个更全面的 API, 具有不同类型的参数:
 
 (def detailed-api-routes
 
@@ -229,7 +221,7 @@
 
 ;; ## 设置具有详细 API 的完整应用程序
 ;;
-;; 让我们创建包含简单和详细 API 的完整路由器：
+;; 让我们创建包含简单和详细 API 的完整路由器:
 
 (def complete-app
   (ring/ring-handler
@@ -244,7 +236,8 @@
                          #_coercion/coercion-middleware]}})
    (ring/routes
     (ring/redirect-trailing-slash-handler)
-    (swagger-ui/create-swagger-ui-handler {:path "/api/swagger.json"})
+    (swagger-ui/create-swagger-ui-handler {:path "/swagger-ui"
+                                           :url "/api/swagger.json"})
     (ring/create-default-handler
      {:not-found (constantly {:status 404 :body "未找到"})
       :method-not-allowed (constantly {:status 405 :body "方法不允许"})
@@ -252,20 +245,24 @@
 
 ;; ## 启动带有 Swagger 文档的服务器
 ;;
-;; 要启动具有此 API 和自动 Swagger 文档的服务器：
+;; 要启动具有此 API 和自动 Swagger 文档的服务器:
 
 (defn start-swagger-server []
-  (jetty/run-jetty complete-app {:port 3002 :join? false}))
+  (jetty/run-jetty #'complete-app {:port 3002 :join? false}))
 
-;; 要启动服务器，请调用：
+;; 要启动服务器, 请调用:
 (comment
   (def server (start-swagger-server))
-  ;; 稍后停止服务器：
+  ;; 稍后停止服务器:
   (.stop server)
   ;;
   ;; 然后访问 http://localhost:3002/swagger-ui/ 查看交互式文档
   ;; Swagger JSON 文档可在 http://localhost:3002/api/swagger.json 访问
   )
+
+(clerk/html [:iframe {:width 600
+                      :height 800
+                      :src "http://localhost:3002/swagger-ui/"}] )
 
 ;; ## 使用 Swagger 和 Reitit 的主要好处
 ;;
@@ -274,18 +271,18 @@
 ;; 3. 清晰的端点规范
 ;; 4. 参数验证
 ;; 5. 客户端 SDK 生成
-;; 6. 标准合规性（OpenAPI 3.0）
+;; 6. 标准合规性(OpenAPI 3.0)
 
 ;; ## 总结
 ;;
-;; 在本笔记本中，我们学习了：
+;; 在本笔记本中, 我们学习了:
 ;; 1. 如何将 Swagger 文档与 Reitit 集成
 ;; 2. 如何使用丰富的文档定义 API 端点
 ;; 3. 如何使用模式进行文档和验证
 ;; 4. 如何创建交互式 API 文档
 ;; 5. 如何设置参数验证
 ;;
-;; 接下来，我们将探索 Malli 规范以进行高级数据验证。
+;; 接下来, 我们将探索 Malli 规范以进行高级数据验证.
 
 ;; Helper functions we reference but don't fully implement in this notebook
 (defn wrap-timing [handler]
