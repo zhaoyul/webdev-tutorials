@@ -1,38 +1,37 @@
 (ns notes.starting-ring-server
   (:require [nextjournal.clerk :as clerk]))
 
-;; # Starting a Ring Server
+;; # 启动一个 Ring 服务器
 ;;
-;; This notebook demonstrates how to create a more sophisticated Ring server
-;; with routing and better response handling.
+;; 本笔记本演示如何创建一个更复杂的 Ring 服务器
+;; 具有路由和更好的响应处理。
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defn load-libraries []
   (require '[ring.adapter.jetty :as jetty])
   (require '[ring.util.response :as response])
-  (require '[ring.middleware.params :as params])
-  (require '[ring.middleware.json :as json]))
+  (require '[ring.middleware.params :as params]))
 
 (load-libraries)
 
-;; ## Creating a more complex handler with routing
+;; ## 创建具有路由的更复杂处理器
 ;;
-;; Let's build a handler that can respond differently based on the URI:
+;; 让我们构建一个可以根据 URI 不同而做出不同响应的处理器：
 
 (defn route-handler [request]
   (case (:uri request)
     "/" {:status 200
          :headers {"Content-Type" "text/html"}
-         :body "<h1>Home Page</h1><p>Welcome to our web service!</p><ul><li><a href=\"/api/users\">Users API</a></li><li><a href=\"/api/status\">Status API</a></li></ul>"}
+         :body "<h1>首页</h1><p>欢迎使用我们的 Web 服务！</p><ul><li><a href=\"/api/users\">用户 API</a></li><li><a href=\"/api/status\">状态 API</a></li></ul>"}
     "/api/users" {:status 200
                   :headers {"Content-Type" "application/json"}
-                  :body "[{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}]"}
+                  :body "[{\"id\": 1, \"name\": \"爱丽丝\"}, {\"id\": 2, \"name\": \"鲍勃\"}]"}
     "/api/status" {:status 200
                    :headers {"Content-Type" "application/json"}
-                   :body "{\"status\": \"running\", \"version\": \"1.0.0\"}"}
+                   :body "{\"status\": \"运行中\", \"version\": \"1.0.0\"}"}
     {:status 404
      :headers {"Content-Type" "text/html"}
-     :body "<h1>Not Found</h1><p>The requested resource was not found.</p>"}))
+     :body "<h1>未找到</h1><p>请求的资源未找到。</p>"}))
 
 ;; Let's test our route handler:
 (route-handler {:request-method :get :uri "/" :headers {}})
@@ -65,81 +64,78 @@
         (assoc-in response [:headers "Content-Type"] "text/plain")
         response))))
 
-;; Let's compose our middleware with our handler:
+;; 让我们将中间件与处理器组合：
 (def app
   (-> route-handler
       wrap-logger
       wrap-content-type))
 
-;; Test the composed application:
+;; 测试组合的应用程序：
 (app {:request-method :get :uri "/" :headers {}})
 
-;; ## Serving JSON responses properly
+;; ## 正确提供 JSON 响应
 ;;
-;; Let's enhance our handler to properly serve JSON using Ring middleware:
+;; 让我们使用 Ring 中间件增强我们的处理器以正确提供 JSON：
 
 (defn json-handler [request]
   (case (:uri request)
     "/" {:status 200
          :headers {"Content-Type" "application/json"}
-         :body {:message "Welcome to the API", :version "1.0.0"}}
+         :body {:message "欢迎使用 API", :version "1.0.0"}}
     "/api/users" {:status 200
                   :headers {"Content-Type" "application/json"}
-                  :body {:users [{:id 1 :name "Alice"} {:id 2 :name "Bob"}]}}
+                  :body {:users [{:id 1 :name "爱丽丝"} {:id 2 :name "鲍勃"}]}}
     "/api/status" {:status 200
                    :headers {"Content-Type" "application/json"}
-                   :body {:status "running" :version "1.0.0"}}
+                   :body {:status "运行中" :version "1.0.0"}}
     {:status 404
      :headers {"Content-Type" "application/json"}
-     :body {:error "Not Found"}}))
+     :body {:error "未找到"}}))
 
-;; ## Creating a proper JSON response with serialization
+;; ## 使用序列化创建适当的 JSON 响应
 ;;
-;; Let's create a helper function to properly serialize JSON responses:
+;; 让我们创建一个辅助函数来正确序列化 JSON 响应：
 
 (defn json-response [data & [status]]
   {:status (or status 200)
    :headers {"Content-Type" "application/json"}
-   :body (clojure.data.json/write-str data)})
+   :body (pr-str data)})
 
-;; Now let's create a better handler that uses this helper:
+;; 现在让我们创建一个使用此辅助函数的更好处理器：
 (defn better-json-handler [request]
   (case (:uri request)
-    "/" (json-response {:message "Welcome to the API", :version "1.0.0"})
-    "/api/users" (json-response {:users [{:id 1 :name "Alice"} {:id 2 :name "Bob"}]})
-    "/api/status" (json-response {:status "running" :version "1.0.0"})
-    (json-response {:error "Not Found"} 404)))
+    "/" (json-response {:message "欢迎使用 API", :version "1.0.0"})
+    "/api/users" (json-response {:users [{:id 1 :name "爱丽丝"} {:id 2 :name "鲍勃"}]})
+    "/api/status" (json-response {:status "运行中" :version "1.0.0"})
+    (json-response {:error "未找到"} 404)))
 
-;; Test the better JSON handler:
+;; 测试更好的 JSON 处理器：
 (better-json-handler {:request-method :get :uri "/" :headers {}})
 
-;; ## Starting a server with middleware stack
+;; ## 启动具有中间件栈的服务器
 ;;
-;; Now let's start a complete server with a middleware stack:
+;; 现在让我们启动一个具有中间件栈的完整服务器：
 
 (defn start-ring-server []
-  (require '[ring.middleware.json :refer [wrap-json-response]])
-  
   (let [full-app
         (-> better-json-handler
-            (wrap-json-response {:pretty true})
             wrap-logger)]
     (jetty/run-jetty full-app {:port 3001 :join? false})))
 
-;; To start the server, you would call:
+;; 要启动服务器，您将调用：
 (comment
   (def server (start-ring-server))
-  ;; To stop the server later:
+  ;; 稍后停止服务器：
   ;; (.stop server)
   )
 
-;; ## Summary
+;; ## 总结
 ;;
-;; In this notebook, we learned:
-;; 1. How to create route-based handlers
-;; 2. How to write custom middleware functions
-;; 3. How to compose middleware with handlers using the thread-first macro
-;; 4. How to properly handle JSON responses
-;; 5. How to start a server with a full middleware stack
+;; 在本笔记本中，我们学习了：
+;; 1. 如何创建基于路由的处理器
+;; 2. 如何编写自定义中间件函数
+;; 3. 如何使用线程优先宏将中间件与处理器组合
+;; 4. 如何正确处理 JSON 响应
+;; 5. 如何使用完整的中间件栈启动服务器
 ;;
-;; Next, we'll explore how to add and use various middleware to enhance our web service.
+;; 接下来，我们将探讨如何添加和使用各种中间件来增强我们的 Web 服务。

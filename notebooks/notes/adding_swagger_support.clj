@@ -1,10 +1,9 @@
 (ns notes.adding-swagger-support
   (:require [nextjournal.clerk :as clerk]))
 
-;; # Adding Swagger Support
+;; # 添加 Swagger 支持
 ;;
-;; This notebook demonstrates how to add Swagger API documentation
-;; to our Clojure web service using Reitit.
+;; 本笔记本演示如何使用 Reitit 为我们的 Clojure Web 服务添加 Swagger API 文档。
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defn load-libraries []
@@ -19,53 +18,53 @@
 
   (require '[reitit.ring.middleware.muuntaja :as muuntaja])
   (require '[reitit.ring.middleware.parameters :as parameters])
-  (require ' [reitit.ring.coercion :as coercion])
+  (require '[reitit.ring.coercion :as coercion])
   (require '[muuntaja.core :as m]))
 
 (load-libraries)
 
-;; ## Introduction to Reitit and Swagger
+;; ## Reitit 和 Swagger 介绍
 ;;
-;; Reitit is a fast data-driven router for Clojure. It provides:
-;; - Fast routing
-;; - Swagger/OpenAPI support
-;; - Schema-based input/output coercion
-;; - Content negotiation
+;; Reitit 是一个快速的数据驱动路由器，用于 Clojure。它提供：
+;; - 快速路由
+;; - Swagger/OpenAPI 支持
+;; - 基于模式的输入/输出强制转换
+;; - 内容协商
 ;;
-;; We'll use it to create a well-documented API with automatic Swagger UI.
+;; 我们将使用它来创建一个具有自动 Swagger UI 的文档完善的 API。
 
-;; First, let's create a simple API with documentation:
+;; 首先，让我们创建一个带有文档的简单 API：
 
 (def swagger-docs
-  ["/swagger.json"
+  ["/api/swagger.json"
    {:get {:no-doc true
-          :swagger {:info {:title "Web Tutorial API"
-                           :description "API for the web development tutorial"
+          :swagger {:info {:title "Web 教程 API"
+                           :description "Web 开发教程的 API"
                            :version "1.0.0"}}
           :handler (swagger/create-swagger-handler)}}])
 
-;; ## Creating API endpoints with documentation
+;; ## 创建带有文档的 API 端点
 ;;
-;; Let's define some routes with detailed documentation:
+;; 让我们定义一些带有详细文档的路由：
 
 (def api-routes
   [["/"
-    {:get {:summary "Home endpoint"
-           :description "Returns a welcome message"
+    {:get {:summary "首页端点"
+           :description "返回欢迎消息"
            :responses {200 {:body {:message string?}}}
            :handler (fn [_] {:status 200
-                             :body {:message "Welcome to the Web Tutorial API"}})}}]
+                             :body {:message "欢迎使用 Web 教程 API"}})}}]
 
    ["/users"
-    {:get {:summary "Get all users"
-           :description "Returns a list of all users in the system"
+    {:get {:summary "获取所有用户"
+           :description "返回系统中所有用户列表"
            :parameters {}
            :responses {200 {:body {:users vector?}}}
            :handler (fn [_] {:status 200
-                             :body {:users [{:id 1 :name "Alice" :email "alice@example.com"}
-                                            {:id 2 :name "Bob" :email "bob@example.com"}]}})}
-     :post {:summary "Create a new user"
-            :description "Creates a new user with the provided information"
+                             :body {:users [{:id 1 :name "爱丽丝" :email "ailisi@example.com"}
+                                            {:id 2 :name "鲍勃" :email "baobei@example.com"}]}})}
+     :post {:summary "创建新用户"
+            :description "使用提供的信息创建新用户"
             :parameters {:body {:name string? :email string?}}
             :responses {201 {:body {:id int? :name string? :email string?}}}
             :handler (fn [request]
@@ -75,50 +74,51 @@
                                :email (get-in request [:parameters :body :email])}})}}]
 
    ["/users/:id"
-    {:get {:summary "Get user by ID"
-           :description "Returns a specific user by their ID"
+    {:get {:summary "根据 ID 获取用户"
+           :description "根据 ID 返回特定用户"
            :parameters {:path {:id int?}}
            :responses {200 {:body {:id int? :name string? :email string?}}}
            :handler (fn [request]
                       {:status 200
                        :body {:id (get-in request [:parameters :path :id])
-                              :name (str "User " (get-in request [:parameters :path :id]))
-                              :email (str "user" (get-in request [:parameters :path :id]) "@example.com")}})}}
+                              :name (str "用户 " (get-in request [:parameters :path :id]))
+                              :email (str "yonghu" (get-in request [:parameters :path :id]) "@example.com")}})}}
 
-    {:delete {:summary "Delete a user"
-              :description "Deletes a user by their ID"
+    {:delete {:summary "删除用户"
+              :description "根据 ID 删除用户"
               :parameters {:path {:id int?}}
               :responses {200 {:body {:message string?}}}
               :handler (fn [request]
                          {:status 200
-                          :body {:message (str "User " (get-in request [:parameters :path :id]) " deleted")}})}}]])
+                          :body {:message (str "用户 " (get-in request [:parameters :path :id]) " 已删除")}})}}]])
 
-;; ## Creating the Reitit router
+;; ## 创建 Reitit 路由器
 ;;
-;; Now let's create a router that combines our API routes with Swagger documentation:
+;; 现在让我们创建一个将我们的 API 路由与 Swagger 文档相结合的路由器：
 
 (def app
   (ring/ring-handler
    (ring/router
     [swagger-docs
      ["/api" api-routes]
-     ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "/"})]]
+     ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "api"
+                                                             :url  "api/swagger.json"})]]
     {:data {:coercion malli/coercion
             :muuntaja m/instance
             :middleware [parameters/parameters-middleware
                          muuntaja/format-middleware
                          #_coercion/coercion-middleware]}})
    (ring/create-default-handler
-    {:not-found (constantly {:status 404 :body "Not Found"})
-     :method-not-allowed (constantly {:status 405 :body "Method Not Allowed"})
-     :not-acceptable (constantly {:status 406 :body "Not Acceptable"})})))
+    {:not-found (constantly {:status 404 :body "未找到"})
+     :method-not-allowed (constantly {:status 405 :body "方法不允许"})
+     :not-acceptable (constantly {:status 406 :body "无法接受"})})))
 
-;; ## Testing the API endpoints
+;; ## 测试 API 端点
 ;;
-;; Let's simulate requests to our API to see how it behaves:
+;; 让我们模拟对 API 的请求，看看其行为：
 
-;; For this example, we need a helper to simulate how the parameters would be processed
-;; In a real Reitit application, parameters would be automatically coerced
+;; 对于此示例，我们需要一个辅助函数来模拟参数的处理方式
+;; 在实际的 Reitit 应用程序中，参数将自动强制转换
 
 (defn simulate-api-call [path method & [params]]
   {:path path
@@ -130,19 +130,19 @@
 
 (simulate-api-call "/api/users" :get)
 
-(simulate-api-call "/api/users" :post {:body {:name "Charlie" :email "charlie@example.com"}})
+(simulate-api-call "/api/users" :post {:body {:name "查理" :email "charli@example.com"}})
 
 (simulate-api-call "/api/users/123" :get {:path {:id 123}})
 
-;; ## Swagger UI endpoint
+;; ## Swagger UI 端点
 ;;
-;; The API will automatically have a Swagger UI available at /swagger-ui/
-;; This provides an interactive documentation interface for your API.
+;; API 将在 /swagger-ui/ 自动提供 Swagger UI
+;; 这为您的 API 提供交互式文档界面。
 
-;; ## Defining API schemas with Malli (for later use)
+;; ## 使用 Malli 定义 API 模式（供以后使用）
 ;;
-;; While we're focusing on Swagger now, let's also see how we can define
-;; schemas that will be used for both documentation and validation:
+;; 虽然我们现在专注于 Swagger，但也让我们看看如何定义
+;; 将用于文档和验证的模式：
 
 (def UserSchema
   [:map
@@ -155,11 +155,11 @@
    [:name :string]
    [:email [:and :string [:re #"^[^\s@]+@[^\s@]+\.[^\s@]+$"]]]])
 
-;; These schemas can be used for both documentation and runtime validation.
+;; 这些模式可用于文档和运行时验证。
 
-;; ## Creating a more detailed API example
+;; ## 创建更详细的 API 示例
 ;;
-;; Let's create a more comprehensive API with different types of parameters:
+;; 让我们创建一个更全面的 API，具有不同类型的参数：
 
 (def detailed-api-routes
 
@@ -227,62 +227,65 @@
                        :body (merge {:id (get-in request [:parameters :path :id])}
                                     (get-in request [:parameters :body]))})}}]])
 
-;; ## Setting up the complete application with detailed API
+;; ## 设置具有详细 API 的完整应用程序
 ;;
-;; Let's create the full router with both simple and detailed APIs:
+;; 让我们创建包含简单和详细 API 的完整路由器：
 
 (def complete-app
   (ring/ring-handler
    (ring/router
     [swagger-docs
      ["/api" api-routes]
-     ["/api" detailed-api-routes]
-     ["/swagger-ui/*" (swagger-ui/create-swagger-ui-handler {:path "/"})]]
+     ["/api" detailed-api-routes]]
     {:data {:coercion malli/coercion
             :muuntaja m/instance
             :middleware [parameters/parameters-middleware
                          muuntaja/format-middleware
                          #_coercion/coercion-middleware]}})
-   (ring/create-default-handler
-    {:not-found (constantly {:status 404 :body "Not Found"})
-     :method-not-allowed (constantly {:status 405 :body "Method Not Allowed"})
-     :not-acceptable (constantly {:status 406 :body "Not Acceptable"})})))
+   (ring/routes
+    (ring/redirect-trailing-slash-handler)
+    (swagger-ui/create-swagger-ui-handler {:path "/api/swagger.json"})
+    (ring/create-default-handler
+     {:not-found (constantly {:status 404 :body "未找到"})
+      :method-not-allowed (constantly {:status 405 :body "方法不允许"})
+      :not-acceptable (constantly {:status 406 :body "无法接受"})}))))
 
-;; ## Starting a server with Swagger documentation
+;; ## 启动带有 Swagger 文档的服务器
 ;;
-;; To start a server with this API and automatic Swagger documentation:
+;; 要启动具有此 API 和自动 Swagger 文档的服务器：
 
 (defn start-swagger-server []
   (jetty/run-jetty complete-app {:port 3002 :join? false}))
 
-;; To start the server, you would call:
+;; 要启动服务器，请调用：
 (comment
   (def server (start-swagger-server))
-  ;; To stop the server later:
-  ;; (.stop server)
+  ;; 稍后停止服务器：
+  (.stop server)
   ;;
-  ;; Then visit http://localhost:3002/swagger-ui/ to see the interactive documentation
-)
+  ;; 然后访问 http://localhost:3002/swagger-ui/ 查看交互式文档
+  ;; Swagger JSON 文档可在 http://localhost:3002/api/swagger.json 访问
+  )
 
-;; ## Key benefits of using Swagger with Reitit
+;; ## 使用 Swagger 和 Reitit 的主要好处
 ;;
-;; 1. Automatic documentation generation
-;; 2. Interactive API testing in the browser
-;; 3. Clear endpoint specifications
-;; 4. Parameter validation
-;; 5. Client SDK generation
-;; 6. Standards compliance (OpenAPI 3.0)
+;; 1. 自动生成文档
+;; 2. 在浏览器中进行交互式 API 测试
+;; 3. 清晰的端点规范
+;; 4. 参数验证
+;; 5. 客户端 SDK 生成
+;; 6. 标准合规性（OpenAPI 3.0）
 
-;; ## Summary
+;; ## 总结
 ;;
-;; In this notebook, we learned:
-;; 1. How to integrate Swagger documentation with Reitit
-;; 2. How to define API endpoints with rich documentation
-;; 3. How to use schemas for both documentation and validation
-;; 4. How to create interactive API documentation
-;; 5. How to set up parameter validation
+;; 在本笔记本中，我们学习了：
+;; 1. 如何将 Swagger 文档与 Reitit 集成
+;; 2. 如何使用丰富的文档定义 API 端点
+;; 3. 如何使用模式进行文档和验证
+;; 4. 如何创建交互式 API 文档
+;; 5. 如何设置参数验证
 ;;
-;; Next, we'll explore Malli specifications for advanced data validation.
+;; 接下来，我们将探索 Malli 规范以进行高级数据验证。
 
 ;; Helper functions we reference but don't fully implement in this notebook
 (defn wrap-timing [handler]

@@ -2,6 +2,8 @@
 
 1. 项目中代码注释, 文档, 都使用中文.
 2. 标点是用英文标点.
+3. notebook的内容使用中文.
+4. 如果 Clojure-mcp 成功启动, 则倾向使用 Clojure-mcp 的工具来读写Clojure代码.
 
 
 ## Project Overview

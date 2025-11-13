@@ -1,11 +1,11 @@
 (ns notes.demonstrating-middleware-functionality
   (:require [nextjournal.clerk :as clerk]))
 
-;; # Demonstrating Middleware Functionality
+;; # 演示中间件功能
 ;;
-;; This notebook demonstrates the actual functionality of middleware,
-;; showing how data flows through the middleware chain and how each
-;; piece of middleware transforms the request and response.
+;; 本笔记本演示中间件的实际功能，
+;; 展示数据如何流经中间件链以及每个
+;; 中间件如何转换请求和响应。
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defn load-libraries []
@@ -14,13 +14,13 @@
 
 (load-libraries)
 
-;; ## Understanding the Middleware Chain
+;; ## 理解中间件链
 ;;
-;; Middleware functions are applied in a specific order, and each one 
-;; can modify the request before passing it to the next middleware,
-;; and the response after getting it from the next middleware.
+;; 中间件函数按特定顺序应用，每个函数 
+;; 都可以在传递给下一个中间件之前修改请求，
+;; 并在从下一个中间件获取响应后修改响应。
 
-;; To visualize this, let's create middleware that logs what happens at each step:
+;; 为了直观地展示这一点，让我们创建记录每个步骤发生情况的中间件：
 
 (defn wrap-logger-step [handler step-name]
   (fn [request]
@@ -29,9 +29,9 @@
       (println (str "  <- " step-name ": Processing response"))
       response)))
 
-;; ## Creating a middleware chain with step logs
+;; ## 创建带有步骤日志的中间件链
 ;;
-;; Let's create a handler and a chain of middleware that we can trace:
+;; 让我们创建一个处理器和一个可以跟踪的中间件链：
 
 (defn sample-handler [request]
   (println "    Handler: Processing request with URI" (:uri request))
@@ -49,18 +49,18 @@
 (comment
   (traced-app {:request-method :get :uri "/test" :headers {}}))
 
-;; As you can see from the output, the request flows:
-;; 1. Middleware-1 receives request
-;; 2. Middleware-2 receives request 
-;; 3. Middleware-3 receives request
-;; 4. Handler processes request
-;; 5. Middleware-3 processes response
-;; 6. Middleware-2 processes response
-;; 7. Middleware-1 processes response
+;; 从输出中可以看出，请求的流向是：
+;; 1. 中间件-1 接收请求
+;; 2. 中间件-2 接收请求 
+;; 3. 中间件-3 接收请求
+;; 4. 处理器处理请求
+;; 5. 中间件-3 处理响应
+;; 6. 中间件-2 处理响应
+;; 7. 中间件-1 处理响应
 
-;; ## Demonstrating request modification
+;; ## 演示请求修改
 ;;
-;; Let's create middleware that modifies the request:
+;; 让我们创建修改请求的中间件：
 
 (defn wrap-request-modifier [handler]
   (fn [request]
@@ -68,9 +68,9 @@
     (let [modified-request (assoc-in request [:headers "x-modified-by"] "request-modifier")]
       (handler modified-request))))
 
-;; ## Demonstrating response modification
+;; ## 演示响应修改
 ;;
-;; Let's create middleware that modifies the response:
+;; 让我们创建修改响应的中间件：
 
 (defn wrap-response-modifier [handler]
   (fn [request]
@@ -98,25 +98,25 @@
 (comment
   (detailed-trace-app {:request-method :get :uri "/" :headers {}}))
 
-;; The flow is:
-;; 1. Final Logger receives request
-;; 2. Request modifier receives request (and adds header)
-;; 3. Response modifier receives request
-;; 4. Handler processes request
-;; 5. Response modifier processes response (and adds header)
-;; 6. Request modifier processes response
-;; 7. Final Logger processes response
+;; 流程如下：
+;; 1. 最终日志记录器接收请求
+;; 2. 请求修改器接收请求（并添加头部）
+;; 3. 响应修改器接收请求
+;; 4. 处理器处理请求
+;; 5. 响应修改器处理响应（并添加头部）
+;; 6. 请求修改器处理响应
+;; 7. 最终日志记录器处理响应
 
-;; ## Practical example: Request body parsing middleware
+;; ## 实际示例：请求体解析中间件
 ;;
-;; Let's create a real-world example with request body parsing:
+;; 让我们创建一个实际场景的示例，处理请求体解析：
 
 (defn parse-json-body [request]
-  "Parse JSON body if present and add as :parsed-body to request"
+  "如果存在则解析 JSON 体并作为 :parsed-body 添加到请求"
   (if-let [body (:body request)]
     (if (string? body)
       (try 
-        (assoc request :parsed-body (clojure.data.json/read-str body))
+        (assoc request :parsed-body (read-string body))
         (catch Exception e 
           (assoc request :parsed-body-error (.getMessage e))))
       request)
@@ -145,11 +145,11 @@
            :body "{\"name\": \"clerk\", \"value\": 42}"})
 
 
-;; ## Stateful middleware example: Session management
+;; ## 有状态中间件示例：会话管理
 ;;
-;; Let's create middleware that simulates session management:
+;; 让我们创建模拟会话管理的中间件：
 
-(def sessions (atom {}))  ; In real applications, you'd use a proper session store
+(def sessions (atom {}))  ; 在实际应用程序中，您会使用适当的会话存储
 
 (defn wrap-session [handler]
   (fn [request]
@@ -182,9 +182,9 @@
 (session-app {:request-method :get :uri "/" :headers {} :cookies {}})
 (session-app {:request-method :get :uri "/" :headers {} :cookies {"session-id" {:value "sess-1234567890"}}})
 
-;; ## Error handling middleware
+;; ## 错误处理中间件
 ;;
-;; Let's create middleware that handles errors gracefully:
+;; 让我们创建优雅处理错误的中间件：
 
 (defn wrap-error-handler [handler]
   (fn [request]
@@ -195,10 +195,10 @@
          :headers {"Content-Type" "application/json"}
          :body (str "{\"error\": \"Internal server error\", \"message\": \"" (.getMessage e) "\"}")}))))
 
-;; Create a handler that might throw an error:
+;; 创建可能抛出错误的处理器：
 (defn risky-handler [request]
   (if (= (:uri request) "/error")
-    (throw (Exception. "Something went wrong!"))
+    (throw (Exception. "出现问题！"))
     {:status 200
      :headers {"Content-Type" "application/json"}
      :body "{\"result\": \"success\"}"}))
@@ -211,9 +211,9 @@
 (error-handling-app {:request-method :get :uri "/ok" :headers {}})
 (error-handling-app {:request-method :get :uri "/error" :headers {}})
 
-;; ## Middleware composition patterns
+;; ## 中间件组合模式
 ;;
-;; Let's look at how to organize middleware for different route groups:
+;; 让我们看看如何为不同的路由组组织中间件：
 
 (defn public-handler [request]
   {:status 200
@@ -223,20 +223,36 @@
 (defn private-handler [request]
   {:status 200
    :headers {"Content-Type" "application/json"}
-   :body "{\"message\": \"Private content for user\", \"user-id\": "
-          (get-in request [:user :id] "unknown") "}"})
+   :body (str "{\"message\": \"Private content for user\", \"user-id\": \""
+              (get-in request [:user :id] "unknown") "\"}")})
 
 ;; Authentication middleware
 (defn wrap-authentication [handler]
   (fn [request]
-    ;; Simple auth check - in real apps, this would be more sophisticated
+    ;; 简单的身份验证检查 - 在实际应用程序中，这会更复杂
     (if (= (get-in request [:headers "authorization"]) "Bearer valid-token")
-      (handler (assoc request :user {:id 123 :name "Alice"}))
+      (handler (assoc request :user {:id 123 :name "爱丽丝"}))
       {:status 401 :headers {"Content-Type" "application/json"}
-       :body "{\"error\": \"Unauthorized\"}"})))
+       :body "{\"error\": \"未授权\"}"})))
+
+;; 我们使用但未在早期笔记本中定义的中间件的辅助函数
+(defn wrap-timing [handler]
+  (fn [request]
+    (let [start-time (System/currentTimeMillis)
+          response (handler request)
+          duration (- (System/currentTimeMillis) start-time)]
+      (assoc-in response [:headers "X-Response-Time"] (str duration "ms")))))
+
+(defn wrap-cors [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (-> response
+          (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
+          (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
+          (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization")))))
 
 ;; Apply different middleware to different routes
-(defroutes app-routes
+(def app-routes
   {:public (-> public-handler
                wrap-timing
                wrap-cors)
@@ -256,29 +272,13 @@
 (route-dispatcher {:request-method :get :uri "/private" :headers {"authorization" "Bearer valid-token"}})
 (route-dispatcher {:request-method :get :uri "/private" :headers {}})
 
-;; ## Summary
+;; ## 总结
 ;;
-;; In this notebook, we learned:
-;; 1. How the middleware chain works step-by-step
-;; 2. How to trace requests through middleware
-;; 3. How to create request-modifying and response-modifying middleware
-;; 4. Practical examples like JSON parsing, sessions, and error handling
-;; 5. How to structure middleware for different route groups
+;; 在本笔记本中，我们学习了：
+;; 1. 中间件链如何逐步工作
+;; 2. 如何跟踪通过中间件的请求
+;; 3. 如何创建请求修改和响应修改中间件
+;; 4. 实际示例，如 JSON 解析、会话和错误处理
+;; 5. 如何为不同的路由组结构化中间件
 ;;
-;; Next, we'll add Swagger support to document our API automatically.
-
-;; Helper functions for middleware we used but didn't define in earlier notebooks
-(defn wrap-timing [handler]
-  (fn [request]
-    (let [start-time (System/currentTimeMillis)
-          response (handler request)
-          duration (- (System/currentTimeMillis) start-time)]
-      (assoc-in response [:headers "X-Response-Time"] (str duration "ms")))))
-
-(defn wrap-cors [handler]
-  (fn [request]
-    (let [response (handler request)]
-      (-> response
-          (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
-          (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
-          (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization")))))
+;; 接下来，我们将添加 Swagger 支持以自动记录我们的 API。

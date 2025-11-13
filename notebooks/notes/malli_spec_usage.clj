@@ -1,10 +1,10 @@
-(ns notes.web-tutorial.06-malli-spec-usage
+(ns notes.malli-spec-usage
   (:require [nextjournal.clerk :as clerk]))
 
-;; # Demonstrating Malli Spec Usage
+;; # 演示 Malli 规范使用
 ;;
-;; This notebook demonstrates how to use Malli for data validation and 
-;; specification in Clojure web services.
+;; 本笔记本演示如何在 Clojure Web 服务中使用 Malli 进行数据验证和
+;; 规范定义。
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defn load-libraries []
@@ -15,71 +15,71 @@
 
 (load-libraries)
 
-;; ## Introduction to Malli
+;; ## Malli 介绍
 ;;
-;; Malli is a fast and functional schema library for Clojure and ClojureScript.
-;; It allows you to:
-;; - Define data specifications (schemas)
-;; - Validate data against schemas
-;; - Transform data between different representations
-;; - Generate documentation and forms from schemas
+;; Malli 是一个快速且功能性的 Clojure 和 ClojureScript 模式库。
+;; 它允许您：
+;; - 定义数据规范（模式）
+;; - 根据模式验证数据
+;; - 在不同表示之间转换数据
+;; - 从模式生成文档和表单
 
-;; Basic schema validation example
+;; 基本模式验证示例
 (def SimpleUserSchema
   [:map
    [:id :int]
    [:name :string]
    [:email :string]])
 
-;; Validating data against our schema
-(def valid-user {:id 1 :name "Alice" :email "alice@example.com"})
-(def invalid-user {:id "not-an-int" :name "Bob" :email "bob@example.com"})
+;; 根据我们的模式验证数据
+(def valid-user {:id 1 :name "爱丽丝" :email "alice@example.com"})
+(def invalid-user {:id "不是整数" :name "鲍勃" :email "bob@example.com"})
 
-;; Check if data is valid according to schema
+;; 检查数据是否符合模式
 (m/validate SimpleUserSchema valid-user)
 (m/validate SimpleUserSchema invalid-user)
 
-;; ## Different Malli Schema Types
+;; ## 不同的 Malli 模式类型
 ;;
-;; Malli provides various types for different validation needs:
+;; Malli 为不同的验证需求提供各种类型：
 
 (def UserSchema
   [:map
    [:id :int]
-   [:name [:and :string [:min 1] [:max 100]]]  ; String with length constraints
-   [:email [:and :string [:re #"^[^\s@]+@[^\s@]+\.[^\s@]+$"]]]  ; Email regex validation
-   [:age {:optional true} :int]  ; Optional field
-   [:role [:enum "admin" "user" "moderator"]]  ; Enumerated values
-   [:tags [:vector :string]]  ; Vector of strings
-   [:metadata [:map-of :keyword :string]]])  ; Map with keyword keys and string values
+   [:name [:string {:min 1 :max 100}]]  ; 有长度约束的字符串
+   [:email [:string {:re #"^[^\s@]+@[^\s@]+\.[^\s@]+$"}]]  ; 邮箱正则验证
+   [:age {:optional true} :int]  ; 可选字段
+   [:role [:enum "admin" "user" "moderator"]]  ; 枚举值
+   [:tags [:vector :string]]  ; 字符串向量
+   [:metadata map?]])  ; 使用关键字键和字符串值的映射
 
-;; Test validation with the more complex schema
-(def complex-valid-user 
-  {:id 1 
-   :name "Alice" 
-   :email "alice@example.com" 
-   :age 30 
-   :role "admin" 
-   :tags ["developer" "clojurian"] 
-   :metadata {:department "engineering" :level "senior"}})
+;; 使用更复杂的模式测试验证
+(def complex-valid-user
+  {:id 1
+   :name "爱丽丝"
+   :email "alice@example.com"
+   :age 30
+   :role "admin"
+   :tags ["开发者" "clojurian"]
+   :metadata {:department "工程部" :level "高级"}})
 
 (m/validate UserSchema complex-valid-user)
 
-;; Test with an invalid user
-(def complex-invalid-user 
-  {:id 1 
-   :name "Bob" 
-   :email "not-an-email"  ; Invalid email
-   :age "thirty"  ; Should be an integer
-   :role "superadmin"  ; Not in enum
-   :tags ["developer" 123]  ; Vector contains non-string
-   :metadata {"department" "engineering"}})  ; Keys should be keywords
+;; 使用无效用户进行测试
+(def complex-invalid-user
+  {:id 1
+   :name "鲍勃"
+   :email "not-an-email"  ; 无效邮箱
+   :age "三十"  ; 应该是整数
+   :role "超级管理员"  ; 不在枚举中
+   :tags ["开发者" 123]  ; 向量包含非字符串
+   :metadata {"department" "engineering"}})  ; 键应该是关键字
 
 (m/validate UserSchema complex-invalid-user)
 
-;; ## Getting detailed validation errors
+;; ## 获取详细的验证错误
 ;;
-;; Malli provides detailed information about validation failures:
+;; Malli 提供有关验证失败的详细信息：
 
 (defn explain-validation [schema data]
   (when-let [explainer (m/explain schema data)]
@@ -87,9 +87,9 @@
 
 (explain-validation UserSchema complex-invalid-user)
 
-;; ## Schema transformation
+;; ## 模式转换
 ;;
-;; Malli can transform data between different representations (e.g., string to int):
+;; Malli 可以在不同表示之间转换数据（例如，字符串到整数）：
 
 (def StringUserSchema
   [:map
@@ -98,81 +98,86 @@
    [:age {:optional true} :int]
    [:active :boolean]])
 
-;; Define a transformation to convert strings to appropriate types
+;; 定义一个转换以将字符串转换为适当类型
 (def string-transformer
   (transform/transformer
-    (transform/string-transformer)  ; Convert strings to appropriate types
-    (transform/strip-extra-keys-transformer)))  ; Remove keys not in schema
+    (transform/string-transformer)
+    (transform/strip-extra-keys-transformer)))
 
-;; Test transformation
-(def string-user {"id" "123" "name" "Charlie" "age" "45" "active" "true"})
+;; 测试转换
+(def string-user {"id" "123" "name" "查理" "age" "45" "active" "true"})
+(def keywordized-user (into {} (map (fn [[k v]] [(keyword k) v]) string-user)))
 (def transformed-user
-  (m/decode StringUserSchema string-user string-transformer))
+  (m/decode StringUserSchema keywordized-user string-transformer))
 
-;; Show the transformation result
-(println "Original:" string-user)
-(println "Transformed:" transformed-user)
+;; 显示转换结果
+
+;; 原始结果:
+string-user
+
+;; 转换后:
+transformed-user
+
+
 (m/validate StringUserSchema transformed-user)
 
-;; ## Creating and using custom validators
+;; ## 创建并使用自定义的验证器
 ;;
 ;; You can create custom validation functions:
 
 (defn positive-integer? [x]
   (and (integer? x) (pos? x)))
 
-(def custom-validator
-  (m/-validator
-    [:function positive-integer?]))
+
 
 (def ProductSchema
   [:map
-   [:id [:function positive-integer?]]
-   [:name [:and :string [:min 1]]]
-   [:price [:and :double [:min 0.01]]]
+   [:id :int]
+   [:name [:string {:min 1}]]
+   [:price [:double {:min 0.01}]]
    [:in-stock :boolean]])
 
-;; Test custom validator
-(m/validate ProductSchema {:id 1 :name "Laptop" :price 999.99 :in-stock true})
-(m/validate ProductSchema {:id -5 :name "Laptop" :price 999.99 :in-stock true})  ; Invalid: negative id
+;; 测试 custom validator
+(m/validate ProductSchema {:id 1 :name "笔记本电脑" :price 999.99 :in-stock true})
+(m/validate ProductSchema {:id -5 :name "笔记本电脑" :price 999.99 :in-stock true})  ; 无效：负数ID
 
-;; ## Schema composition and reuse
+;; ## 模式组合和重用
 ;;
-;; Malli schemas can be composed and reused:
+;; Malli 模式可以组合和重用：
 
 (def AddressSchema
   [:map
    [:street :string]
    [:city :string]
    [:country [:enum "US" "CA" "UK" "AU"]]
-   [:postal-code [:and :string [:re #"^[A-Z]\d[A-Z] ?\d[A-Z]\d$|^[\d]{5}$"]]]])  ; US or Canadian postal code
+   [:postal-code [:string {:re #"^[A-Z]\d[A-Z] ?\d[A-Z]\d$|^\d{5}$"}]]])  ; 美国或加拿大邮政编码
 
 (def UserWithAddressSchema
   [:map
    [:id :int]
    [:name :string]
    [:email :string]
-   [:address AddressSchema]])  ; Reuse the AddressSchema
+   [:address AddressSchema]])  ; 重用 AddressSchema
 
 (def user-with-address
   {:id 1
-   :name "David"
+   :name "大卫"
    :email "david@example.com"
-   :address {:street "123 Main St" 
-             :city "Anytown" 
-             :country "US" 
+   :address {:street "123 Main St"
+             :city "Anytown"
+             :country "US"
              :postal-code "12345"}})
 
 (m/validate UserWithAddressSchema user-with-address)
 
-;; ## API request/response validation
+;; ## API 请求/响应验证
 ;;
-;; Let's create schemas for API requests and responses:
+;; 让我们为 API 请求和响应创建模式：
 
 (def CreateUserRequest
   [:map
-   [:name [:and :string [:min 1] [:max 100]]]
-   [:email [:and :string [:re #"^[^\s@]+@[^\s@]+\.[^\s@]+$"]]]
+   [:name [:string {:min 1 :max 100}]]
+   [:email [:string {:re #"^[^\s@]+@[^\s@]+\.[^\s@]+$"}]]
    [:age {:optional true} :int]
    [:subscribe-to-newsletter {:optional true} :boolean]])
 
@@ -183,83 +188,83 @@
    [:message :string]
    [:timestamp inst?]])
 
-;; Validation function for API requests
+;; API 请求的验证函数
 (defn validate-create-user-request [request]
   (if (m/validate CreateUserRequest request)
     {:valid true :data (m/decode CreateUserRequest request string-transformer)}
     {:valid false :errors (explain-validation CreateUserRequest request)}))
 
-;; Test request validation
-(validate-create-user-request {:name "Eve" :email "eve@example.com" :age 25})
+;; 测试请求验证
+(validate-create-user-request {:name "夏娃" :email "eve@example.com" :age 25})
 (validate-create-user-request {:name "" :email "invalid-email"})
 
-;; ## Schema generation and introspection
+;; ## 模式生成和内省
 ;;
-;; Malli allows introspection of schemas:
-
+;; Malli 允许对模式进行内省：
+^{::clerk/auto-expand-results? true}
 (def schema-info (m/children UserSchema))
-(println "Schema children:" schema-info)
 
-;; ## Using Malli in a web request context
+;; ## 在 Web 请求上下文中使用 Malli
 ;;
-;; Let's simulate how you might use Malli validation in a web request:
+;; 让我们模拟如何在 Web 请求中使用 Malli 验证：
 
 (defn create-user-handler [request]
   (let [user-data (get-in request [:parameters :body])]
     (if-let [errors (not (m/validate CreateUserRequest user-data))]
       {:status 400
-       :body {:success false 
-              :message "Validation failed"
+       :body {:success false
+              :message "验证失败"
               :errors (explain-validation CreateUserRequest user-data)}}
       {:status 201
        :body {:success true
               :user (assoc user-data :id (inc (rand-int 10000)))
-              :message "User created successfully"
+              :message "用户创建成功"
               :timestamp (java.util.Date.)}})))
 
-;; Simulate request validation
-(create-user-handler {:parameters {:body {:name "Frank" :email "frank@example.com"}}})
+;; 模拟请求验证
+(create-user-handler {:parameters {:body {:name "弗兰克" :email "frank@example.com"}}})
 (create-user-handler {:parameters {:body {:name "" :email "invalid"}}})
 
-;; ## Schema-based form generation (conceptual)
+;; ## 基于模式的表单生成（概念性）
 ;;
-;; Malli schemas can be used to generate forms automatically:
+;; Malli 模式可用于自动生成表单：
 
 (defn schema-to-form-fields [schema]
   (let [children (m/children schema)]
     (mapv (fn [[key type-info]]
-            {:field key 
+            {:field key
              :type (if (vector? type-info) (first type-info) type-info)
-             :required (not= (second type-info) :optional)}) 
+             :required (not= (second type-info) :optional)})
           children)))
 
-;; Generate form fields from our schema
+;; 从我们的模式生成表单字段
+^{::clerk/auto-expand-results? true}
 (schema-to-form-fields UserSchema)
 
-;; ## Advanced Malli features
+;; ## 高级 Malli 功能
 ;;
-;; Using union types for polymorphic data:
+;; 使用联合类型处理多态数据：
 
 (def PaymentSchema
   [:map
    [:id :int]
    [:amount :double]
-   [:payment-type 
-    [:or 
-     [:map 
-      [:type [:enum "credit-card"]] 
-      [:card-number :string] 
-      [:expiry-month :int] 
+   [:payment-type
+    [:or
+     [:map
+      [:type [:enum "credit-card"]]
+      [:card-number :string]
+      [:expiry-month :int]
       [:expiry-year :int]]
-     [:map 
-      [:type [:enum "paypal"]] 
+     [:map
+      [:type [:enum "paypal"]]
       [:paypal-email :string]]
-     [:map 
-      [:type [:enum "bank-transfer"]] 
-      [:account-number :string] 
+     [:map
+      [:type [:enum "bank-transfer"]]
+      [:account-number :string]
       [:routing-number :string]]]]])
 
-;; Test union schema
+;; 测试联合模式
 (def credit-card-payment
   {:id 1 :amount 99.99 :payment-type {:type "credit-card" :card-number "1234" :expiry-month 12 :expiry-year 25}})
 
@@ -269,9 +274,9 @@
 (m/validate PaymentSchema credit-card-payment)
 (m/validate PaymentSchema paypal-payment)
 
-;; ## Schema evolution and compatibility checking
+;; ## 模式演进和兼容性检查
 ;;
-;; Malli helps with schema evolution by providing tools to check compatibility:
+;; Malli 通过提供检查兼容性的工具来帮助模式演进：
 
 (def OldUserSchema
   [:map
@@ -284,37 +289,37 @@
    [:name :string]
    [:email {:optional true} :string]])
 
-;; Check if data valid for old schema is valid for new schema 
+;; 检查对旧模式有效的数据是否对新模式有效
 (defn compatible? [old-schema new-schema test-data]
   (and (m/validate old-schema test-data)
        (m/validate new-schema test-data)))
 
-(compatible? OldUserSchema NewUserSchema {:id 1 :name "Grace"})
+(compatible? OldUserSchema NewUserSchema {:id 1 :name "格蕾丝"})
 
-;; ## Summary of Malli benefits
+;; ## Malli 优势总结
 ;;
-;; Malli provides:
-;; 1. Fast and expressive schema definitions
-;; 2. Detailed validation error reporting
-;; 3. Data transformation capabilities
-;; 4. Schema composition and reuse
-;; 5. Integration with web frameworks
-;; 6. Schema introspection and generation
-;; 7. Support for complex data structures
-;; 8. Type safety without static compilation
+;; Malli 提供：
+;; 1. 快速且富有表现力的模式定义
+;; 2. 详细的验证错误报告
+;; 3. 数据转换功能
+;; 4. 模式组合和重用
+;; 5. 与 Web 框架集成
+;; 6. 模式内省和生成
+;; 7. 支持复杂数据结构
+;; 8. 无需静态编译的类型安全
 ;;
-;; When combined with Reitit (as we saw in the previous notebook), 
-;; Malli provides comprehensive input/output validation and documentation for web APIs.
+;; 与 Reitit 结合使用（如我们在前面的笔记本中看到的），
+;; Malli 为 Web API 提供全面的输入/输出验证和文档。
 
-;; ## Complete example: Validating a complex API request
+;; ## 完整示例：验证复杂的 API 请求
 ;;
-;; Let's create a complete example that uses multiple Malli features:
+;; 让我们创建一个使用多个 Malli 功能的完整示例：
 
 (def OrderSchema
   [:map
    [:id :int]
    [:customer UserSchema]
-   [:items [:vector 
+   [:items [:vector
             [:map
              [:product-id :int]
              [:quantity :int]
@@ -327,24 +332,24 @@
 (defn process-order [order]
   (if (m/validate OrderSchema order)
     (let [total (reduce + (map #(* (:quantity %) (:price %)) (:items order)))]
-      (assoc order 
+      (assoc order
              :total total
              :status "pending"
              :created-at (java.util.Date.)))
-    {:error "Invalid order format"
+    {:error "订单格式无效"
      :validation-errors (explain-validation OrderSchema order)}))
 
-;; Test order processing
+;; 测试订单处理
 (def sample-order
   {:id 123
-   :customer {:id 1 :name "Helen" :email "helen@example.com" :role "user" :tags [] :metadata {}}
+   :customer {:id 1 :name "海伦" :email "helen@example.com" :role "user" :tags [] :metadata {}}
    :items [{:product-id 1 :quantity 2 :price 29.99}
            {:product-id 2 :quantity 1 :price 19.99}]
    :status "pending"
    :shipping-address {:street "456 Oak Ave" :city "Othertown" :country "US" :postal-code "67890"}})
 
+^{::clerk/auto-expand-results? true}
 (process-order sample-order)
 
-;; Now you have a complete understanding of how to build a web service 
-;; with Clojure, starting from basic web servers to advanced validation
-;; with Malli schemas.
+;; 现在您已完全了解如何使用 Clojure 构建 Web 服务，
+;; 从基本的 Web 服务器到使用 Malli 模式的高级验证。
