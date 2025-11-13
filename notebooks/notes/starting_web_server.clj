@@ -6,8 +6,8 @@
 (ns notes.starting-web-server
   (:require [nextjournal.clerk :as clerk]
             [ring.util.response :as response]
-            [ring.adapter.jetty :as jetty]))
-
+            [ring.adapter.jetty :as jetty])
+  (:import [java.net ServerSocket]))
 
 ;; 演示了如何在 Clojure 中启动一个基本的 Web 服务器.
 
@@ -36,8 +36,14 @@
 ;; 现在, 让我们使用 Ring 的 Jetty 适配器启动一个真实的服务器.
 ;; 服务器将在 3000 端口上运行.
 
+(defn get-free-port []
+  (with-open [socket (ServerSocket. 0)]
+    (.getLocalPort socket)))
+
+(def port (get-free-port))
+
 (defn start-server []
-  (jetty/run-jetty #'simple-handler {:port 3461 :join? false}))
+  (jetty/run-jetty #'simple-handler {:port port :join? false}))
 
 ;; 要启动服务器, 请调用该函数:
 
@@ -49,9 +55,8 @@
 
 ;; result
 {:nextjournal.clerk/visibility {:code :show :result :show}}
-(clerk/html [:iframe {:src "http://localhost:3461"}])
-
-(clerk/html [:hi "h你好"])
+(clerk/html [:div {:class "border-4 border-gray-700 p-4 w-64"}
+             [:iframe {:src (str "http://localhost:" port)}]])
 
 ;; ## 理解请求 map
 ;;
