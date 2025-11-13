@@ -1,23 +1,21 @@
-(ns notes.starting-ring-server
-  (:require [nextjournal.clerk :as clerk]))
-
 ;; # 启动一个 Ring 服务器
 ;;
 ;; 本笔记本演示如何创建一个更复杂的 Ring 服务器
 ;; 具有路由和更好的响应处理。
 
-^{::clerk/visibility {:code :hide :result :hide}}
-(defn load-libraries []
-  (require '[ring.adapter.jetty :as jetty])
-  (require '[ring.util.response :as response])
-  (require '[ring.middleware.params :as params]))
 
-(load-libraries)
+(ns notes.starting-ring-server
+  (:require [nextjournal.clerk :as clerk]
+            [ring.adapter.jetty :as jetty]
+            [ring.util.response :as response]
+            [ring.middleware.params :as params]))
+
+
 
 ;; ## 创建具有路由的更复杂处理器
 ;;
 ;; 让我们构建一个可以根据 URI 不同而做出不同响应的处理器：
-
+^{::clerk/visibility {:code :show :result :hide}}
 (defn route-handler [request]
   (case (:uri request)
     "/" {:status 200
@@ -45,19 +43,23 @@
 ;; Ring middleware allows us to modify requests and responses.
 ;; Let's add some common middleware to our handler:
 
-(defn wrap-logger [handler]
+^{::clerk/visibility {:code :show :result :hide}}
+(defn wrap-logger
   "Middleware that logs requests"
+  [handler]
   (fn [request]
     (let [start-time (System/nanoTime)
           response (handler request)
           duration (/ (- (System/nanoTime) start-time) 1000000.0)]
-      (println (str "Request: " (:request-method request) " " (:uri request) 
-                    ", Status: " (:status response) 
+      (println (str "Request: " (:request-method request) " " (:uri request)
+                    ", Status: " (:status response)
                     ", Duration: " (format "%.2f" duration) "ms"))
       response)))
 
-(defn wrap-content-type [handler]
+^{::clerk/visibility {:code :show :result :hide}}
+(defn wrap-content-type
   "Middleware that adds default content type if not present"
+  [handler]
   (fn [request]
     (let [response (handler request)]
       (if (nil? (get-in response [:headers "Content-Type"]))
@@ -65,6 +67,7 @@
         response))))
 
 ;; 让我们将中间件与处理器组合：
+^{::clerk/visibility {:code :show :result :hide}}
 (def app
   (-> route-handler
       wrap-logger
@@ -77,6 +80,7 @@
 ;;
 ;; 让我们使用 Ring 中间件增强我们的处理器以正确提供 JSON：
 
+^{::clerk/visibility {:code :show :result :hide}}
 (defn json-handler [request]
   (case (:uri request)
     "/" {:status 200
@@ -95,13 +99,14 @@
 ;; ## 使用序列化创建适当的 JSON 响应
 ;;
 ;; 让我们创建一个辅助函数来正确序列化 JSON 响应：
-
+^{::clerk/visibility {:code :show :result :hide}}
 (defn json-response [data & [status]]
   {:status (or status 200)
    :headers {"Content-Type" "application/json"}
    :body (pr-str data)})
 
 ;; 现在让我们创建一个使用此辅助函数的更好处理器：
+^{::clerk/visibility {:code :show :result :hide}}
 (defn better-json-handler [request]
   (case (:uri request)
     "/" (json-response {:message "欢迎使用 API", :version "1.0.0"})
@@ -110,12 +115,13 @@
     (json-response {:error "未找到"} 404)))
 
 ;; 测试更好的 JSON 处理器：
+^{::clerk/auto-expand-results? true}
 (better-json-handler {:request-method :get :uri "/" :headers {}})
 
 ;; ## 启动具有中间件栈的服务器
 ;;
 ;; 现在让我们启动一个具有中间件栈的完整服务器：
-
+^{::clerk/visibility {:code :show :result :hide}}
 (defn start-ring-server []
   (let [full-app
         (-> better-json-handler
