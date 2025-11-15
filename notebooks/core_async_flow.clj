@@ -569,6 +569,46 @@
   (graph f)
 
   )
+
+;; ## 4. Flow Monitor 可视化
+
+(def monitor-port 9998)
+
+(defonce flow-monitor-instance (atom nil))
+
+(defn start-flow-monitor! []
+  ;; 启动 flow + monitor, 并缓存实例, 保证在 Notebook 中复用
+  (or @flow-monitor-instance
+      (let [flow (create-flow)
+            _chs (flow/start flow)
+            _ (flow/resume flow)
+            server (fmon/start-server {:flow flow
+                                       :port monitor-port})
+            instance {:flow flow
+                      :server server
+                      :port monitor-port}]
+        (reset! flow-monitor-instance instance)
+        instance)))
+
+(defn stop-flow-monitor! []
+  ;; Notebook 结束后可调用 (stop-flow-monitor!) 释放资源
+  (when-let [{:keys [flow server]} @flow-monitor-instance]
+    (flow/stop flow)
+    (fmon/stop-server server)
+    (reset! flow-monitor-instance nil)))
+
+(defn flow-monitor-iframe []
+  (let [{:keys [port]} (start-flow-monitor!)]
+    [:iframe {:width 1100
+              :height 720
+              :style {:border "1px solid #444"
+                      :border-radius "6px"}
+              :src (str "http://localhost:" port "/")}]))
+
+(clerk/html
+ (flow-monitor-iframe))
+
+;; 如果需要手动停止监控服务, 在 REPL 中执行 (stop-flow-monitor!)
 (comment
 
   ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
