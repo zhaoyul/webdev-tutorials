@@ -8,15 +8,16 @@
 (ns muuntaja-content-negotiation
   (:require [clojure.data.json :as json]
             [cheshire.core :as cheshire]
+            [hato.client :as http]
             [muuntaja.core :as m]
             [muuntaja.middleware :as middleware]
-            [muuntaja.format.yaml :as yaml-format]
             [ring.adapter.jetty :as jetty]
             [reitit.ring :as ring]
             [reitit.ring.middleware.muuntaja :as muuntaja]
             [reitit.ring.middleware.parameters :as parameters]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk.viewer :as v])
+  (:import [java.io InputStream]))
 
 ;; ## 什么是内容协商？
 
@@ -32,7 +33,10 @@
 (def json-example {:name "Clojure" :type "Lisp" :features ["functional" "concurrent" "dynamic"]})
 
 ;; 将 Clojure 数据结构编码为 JSON
-(m/encode "application/json" json-example)
+(->> json-example
+     (m/encode "application/json")
+     (.readAllBytes)
+     (String.))
 
 ;; 将 JSON 解码为 Clojure 数据结构
 (m/decode "application/json" (m/encode "application/json" json-example))
@@ -48,20 +52,12 @@
 ;; EDN 格式示例
 (m/encode "application/edn" {:language "Clojure" :features ["LISP" "JVM"]})
 
-;; 要使用 YAML，我们需要先配置它
-;; Muuntaja 的默认配置中不包含 YAML，需要手动添加
+;; Muuntaja 默认就支持 Transit，不需要额外配置
 
-;; 创建一个支持 YAML 的自定义实例
-(def custom-instance
-  (m/create
-   (assoc m/default-options
-          :formats
-          (-> m/default-options
-              :formats
-              (assoc "application/yaml" (yaml-format/format))))))
-
-;; 现在我们可以使用 YAML 格式
-(m/encode custom-instance "application/yaml" {:language "Clojure" :features ["LISP" "JVM"]})
+;; 现在我们可以使用 Transit 格式
+(->> (m/encode m/instance "application/transit+json" {:language "Clojure" :features ["LISP" "JVM"]})
+     (.readAllBytes)
+     (String.))
 
 ;; ## 在 Web 服务中使用 Muuntaja
 
@@ -79,15 +75,15 @@
   (ring/ring-handler
    (ring/router
     [["/api" {:get api-handler
-              :post api-handler}]])
-   (ring/create-default-handler)
-   {:data {:muuntaja m/instance
-           :middleware [;; 添加参数解析中间件
-                        parameters/parameters-middleware
-                        ;; 添加 muuntaja 内容协商中间件
-                        muuntaja/format-negotiate-middleware
-                        muuntaja/format-response-middleware
-                        muuntaja/format-request-middleware]}}))
+              :post api-handler}]]
+    {:data {:muuntaja m/instance
+            :middleware [;; 添加参数解析中间件
+                         parameters/parameters-middleware
+                         ;; 添加 muuntaja 内容协商中间件
+                         muuntaja/format-negotiate-middleware
+                         muuntaja/format-response-middleware
+                         muuntaja/format-request-middleware]}})
+   (ring/create-default-handler)))
 
 ;; ## 实际的请求示例
 
@@ -114,14 +110,15 @@
 ;; ## 自定义格式支持
 
 ;; Muuntaja 支持添加自定义的编解码格式
-(def custom-instance
-  (m/create
-   (-> m/default-options
-       (m/encode-with :json cheshire/encode)
-       (m/decode-with :json cheshire/decode))))
+;; 使用 cheshire 库进行 JSON 处理
+(defn encode-with-cheshire [data]
+  (cheshire/encode data))
 
-;; 使用自定义配置的实例
-(m/encode custom-instance "application/json" {:custom true :using "cheshire"})
+(defn decode-with-cheshire [data]
+  (cheshire/decode data))
+
+;; 使用 cheshire 进行编码的示例
+(encode-with-cheshire {:custom true :using "cheshire"})
 
 ;; ## 创建支持内容协商的 API 示例
 
@@ -145,13 +142,13 @@
   (ring/ring-handler
    (ring/router
     [["/user" {:get user-api-handler}]
-     ["/users" {:get users-api-handler}]])
-   (ring/create-default-handler)
-   {:data {:muuntaja m/instance
-           :middleware [parameters/parameters-middleware
-                        muuntaja/format-negotiate-middleware
-                        muuntaja/format-response-middleware
-                        muuntaja/format-request-middleware]}}))
+     ["/users" {:get users-api-handler}]]
+    {:data {:muuntaja m/instance
+            :middleware [parameters/parameters-middleware
+                         muuntaja/format-negotiate-middleware
+                         muuntaja/format-response-middleware
+                         muuntaja/format-request-middleware]}})
+   (ring/create-default-handler)))
 
 ;; ## Muuntaja 的内部工作原理
 
@@ -159,7 +156,7 @@
 (defn format-detection-demo []
   {:json (m/encode m/instance "application/json" {:format :detected})
    :edn (m/encode m/instance "application/edn" {:format :detected})
-   :yaml (m/encode custom-instance "application/yaml" {:format :detected})})
+   :transit (m/encode m/instance "application/transit+json" {:format :detected})})
 
 (format-detection-demo)
 
@@ -170,13 +167,13 @@
                      :features ["content-negotiation" "multiple-formats" "flexible-api"]}
         json-response (m/encode "application/json" sample-data)
         edn-response (m/encode "application/edn" sample-data)
-        yaml-response (m/encode custom-instance "application/yaml" sample-data)]
+        transit-response (m/encode m/instance "application/transit+json" sample-data)]
     {:json json-response
      :edn edn-response
-     :yaml yaml-response
+     :transit transit-response
      :decoded-json (m/decode "application/json" json-response)
      :decoded-edn (m/decode "application/edn" edn-response)
-     :decoded-yaml (m/decode custom-instance "application/yaml" yaml-response)}))
+     :decoded-transit (m/decode m/instance "application/transit+json" transit-response)}))
 
 (content-negotiation-demo)
 
@@ -195,13 +192,119 @@
   (ring/ring-handler
    (ring/router
     [["/users" {:get users-api-handler
-                :post post-users-handler}]])
-   (ring/create-default-handler)
-   {:data {:muuntaja m/instance
-           :middleware [parameters/parameters-middleware
-                        muuntaja/format-negotiate-middleware
-                        muuntaja/format-response-middleware
-                        muuntaja/format-request-middleware]}}))
+                :post post-users-handler}]]
+    {:data {:muuntaja m/instance
+            :middleware [parameters/parameters-middleware
+                         muuntaja/format-negotiate-middleware
+                         muuntaja/format-response-middleware
+                         muuntaja/format-request-middleware]}})
+   (ring/create-default-handler)))
+
+;; ## 测试内容协商中间件
+
+;; 让我们模拟不同的 HTTP 请求来测试内容协商功能
+(defn test-content-negotiation []
+  ;; 直接调用应用处理请求
+  (complete-api-app {:uri "/users"
+                     :request-method :get
+                     :headers {"accept" "application/json"}}))
+
+;; 测试不同内容类型的响应
+(defn simulate-requests []
+  (let [base-request {:uri "/users"
+                      :request-method :get
+                      :body "{\"name\":\"Test User\",\"email\":\"test@example.com\"}"}]
+    {:json-response (complete-api-app (assoc-in base-request [:headers "accept"] "application/json"))
+     :edn-response (complete-api-app (assoc-in base-request [:headers "accept"] "application/edn"))
+     :transit-response (complete-api-app (assoc-in base-request [:headers "accept"] "application/transit+json"))}))
 
 ;; 该应用程序现在可以根据客户端请求的 Accept 头返回不同的格式
 ;; 同时也可以解码不同格式的请求体
+
+;; ## 实际演示：启动服务器并测试内容协商
+
+;; 现在我们将启动一个真实的 Jetty 服务器来演示内容协商
+;; 注意：在实际的 Clerk 笔记本中运行服务器需要小心，这里仅作为演示代码
+
+;; 启动服务器的函数 (这在实际运行时会被调用)
+(defn start-server []
+  (jetty/run-jetty complete-api-app {:port 3000 :join? false}))
+
+;; ## 使用 HTTP 客户端查看内容协商结果
+
+;; 下面的代码演示如何在本地启动服务端, 并用 HTTP 客户端直接查看返回值
+(defonce server-instance (atom nil))
+
+(defn start-demo-server! []
+  (when-not @server-instance
+    (reset! server-instance (start-server))))
+
+(defn stop-demo-server! []
+  (when-let [server @server-instance]
+    (.stop server)
+    (reset! server-instance nil)))
+
+(defn decode-body [accept body-bytes]
+  (try
+    (if (= accept "application/transit+json")
+      (m/decode m/instance "application/transit+json" body-bytes)
+      (m/decode accept body-bytes))
+    (catch Exception _
+      (String. body-bytes "UTF-8"))))
+
+(defn http-client-results []
+  ;; 自动启动示例服务, 请求完毕后立即关闭, 避免端口占用
+  (start-demo-server!)
+  (try
+    (let [url "http://localhost:3000/users"
+          accept-values ["application/json"
+                         "application/edn"
+                         "application/transit+json"]]
+      (into {}
+            (for [accept accept-values
+                  :let [response (http/get url {:headers {"Accept" accept}
+                                                :as :byte-array})
+                        raw-body (String. ^bytes (:body response) "UTF-8")]]
+              [accept {:status (:status response)
+                       :content-type (get-in response [:headers "content-type"])
+                       :raw-body raw-body
+                       :decoded (decode-body accept (:body response))}])))
+    (finally
+      (stop-demo-server!))))
+
+(defn http-client-table-data []
+  (let [results (http-client-results)]
+    (for [[accept {:keys [status content-type raw-body decoded]}] results]
+      {:accept-header accept
+       :status status
+       :content-type content-type
+       :raw-body raw-body
+       :decoded-value decoded})))
+
+(clerk/table
+ (http-client-table-data))
+
+;; 上面的 (clerk/table (http-client-table-data)) 会直接在 Notebook 中渲染一张表格
+;; 每行都展示不同 Accept 头的状态码、原始字符串以及 Muuntaja 解码结果, 更直观地查看内容协商行为
+
+;; 示例：如何测试不同格式的请求
+;;
+;; JSON 请求:
+;; curl -H "Accept: application/json" http://localhost:3000/users
+;;
+;; EDN 请求:
+;; curl -H "Accept: application/edn" http://localhost:3000/users
+;;
+;; Transit JSON 请求:
+;; curl -H "Accept: application/transit+json" http://localhost:3000/users
+;;
+;; 发送不同格式的请求体:
+;;
+;; 发送 JSON:
+;; curl -X POST -H "Content-Type: application/json" -d '{"name":"Test User","email":"test@example.com"}' http://localhost:3000/users
+;;
+;; 发送 EDN:
+;; curl -X POST -H "Content-Type: application/edn" -d '{:name "Test User" :email "test@example.com"}' http://localhost:3000/users
+
+;; 这样，客户端可以通过设置 Accept 头来指定期望的响应格式
+;; 服务器会根据内容协商返回相应的格式
