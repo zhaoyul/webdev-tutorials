@@ -16,6 +16,7 @@ This project contains a complete training curriculum for learning web developmen
 4. **04_demonstrating_middleware_functionality.clj** - Understanding middleware chains
 5. **05_adding_swagger_support.clj** - API documentation with Swagger
 6. **06_malli_spec_usage.clj** - Data validation with Malli
+7. **muuntaja_content_negotiation.clj** - Content negotiation with Muuntaja
 
 ## Usage
 
