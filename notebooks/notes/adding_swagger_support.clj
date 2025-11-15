@@ -1,27 +1,28 @@
+;; # 添加 Swagger 支持
+;;
+;; 演示如何使用 Reitit 为 Clojure Web 服务添加 Swagger API 文档.
+
+;; 增加依赖
+^{:nextjournal.clerk/toc true}
 (ns notes.adding-swagger-support
   (:require [nextjournal.clerk :as clerk]
             [ring.adapter.jetty :as jetty]
-            [ring.util.response :as response]
             [reitit.coercion.malli :as malli]
             [reitit.swagger :as swagger]
             [reitit.swagger-ui :as swagger-ui]
             [reitit.ring :as ring]
             [reitit.ring.middleware.muuntaja :as muuntaja]
             [reitit.ring.middleware.parameters :as parameters]
-            [reitit.ring.coercion :as coercion]
             [muuntaja.core :as m]))
 
-;; # 添加 Swagger 支持
-;;
-;; 演示如何使用 Reitit 为 Clojure Web 服务添加 Swagger API 文档.
 
 ;; ## Reitit 和 Swagger 介绍
 ;;
 ;; Reitit 是一个方便的数据驱动路由器, 用于 Clojure. 它提供:
-;; - 路由
-;; - Swagger/OpenAPI 支持
-;; - 基于模式的输入/输出强制转换
-;; - 内容协商
+;; - 路由 route
+;; - Swagger/OpenAPI 支持 swagger
+;; - 基于模式的输入/输出强制转换 malli
+;; - 内容协商 muuntaja
 ;;
 ;; 我们将使用它来创建一个具有自动 Swagger UI 的文档完善的 API.
 

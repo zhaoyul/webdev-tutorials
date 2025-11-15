@@ -10,6 +10,10 @@
 
         ;; Schema validation
         metosin/malli {:mvn/version "0.18.0"}
+        io.github.clojure/core.async.flow-monitor {:git/tag "v0.1.1" :git/sha "61e8d31"}
+
+        ;; Async processing
+        org.clojure/core.async {:mvn/version "1.9.808-alpha1"}
         ;; Clerk notebook
         io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
  :aliases
@@ -19,7 +23,7 @@
           :exec-args {:name "Clojure"}}
   :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
           :ns-default build}
-  :dev {:extra-deps {com.lambdaisland/classpath {:mvn/version "0.5.48"}
+  :dev {:extra-deps {com.lambdaisland/classpath {:mvn/version "0.6.58"}
                      criterium/criterium {:mvn/version "0.4.6"}
                      org.clojure/tools.namespace {:mvn/version "1.4.4"}
                      org.clojure/test.check {:mvn/version "1.1.1"}}
@@ -36,7 +40,7 @@
                                         :git/tag "v0.1.11-alpha"
                                         :git/sha "7739dba"}}
         :exec-fn clojure-mcp.main/start-mcp-server
-        :exec-args {:port 7778}}
+        :exec-args {:port 60670}}
   :clerk {:extra-deps {io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
           :exec-fn nextjournal.clerk/serve!
           :exec-args {:watch-paths ["notebooks"]
