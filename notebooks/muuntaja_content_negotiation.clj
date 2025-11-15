@@ -10,6 +10,7 @@
             [cheshire.core :as cheshire]
             [muuntaja.core :as m]
             [muuntaja.middleware :as middleware]
+            [muuntaja.format.yaml :as yaml-format]
             [ring.adapter.jetty :as jetty]
             [reitit.ring :as ring]
             [reitit.ring.middleware.muuntaja :as muuntaja]
@@ -43,13 +44,24 @@
 ;; - Transit (JSON, MessagePack)
 ;; - EDN
 ;; - MessagePack
-;; - YAML
 
 ;; EDN 格式示例
 (m/encode "application/edn" {:language "Clojure" :features ["LISP" "JVM"]})
 
-;; YAML 格式示例 (如果已配置)
-(m/encode "application/yaml" {:language "Clojure" :features ["LISP" "JVM"]})
+;; 要使用 YAML，我们需要先配置它
+;; Muuntaja 的默认配置中不包含 YAML，需要手动添加
+
+;; 创建一个支持 YAML 的自定义实例
+(def custom-instance
+  (m/create
+   (assoc m/default-options
+          :formats
+          (-> m/default-options
+              :formats
+              (assoc "application/yaml" (yaml-format/format))))))
+
+;; 现在我们可以使用 YAML 格式
+(m/encode custom-instance "application/yaml" {:language "Clojure" :features ["LISP" "JVM"]})
 
 ;; ## 在 Web 服务中使用 Muuntaja
 
@@ -147,7 +159,7 @@
 (defn format-detection-demo []
   {:json (m/encode m/instance "application/json" {:format :detected})
    :edn (m/encode m/instance "application/edn" {:format :detected})
-   :yaml (m/encode m/instance "application/yaml" {:format :detected})})
+   :yaml (m/encode custom-instance "application/yaml" {:format :detected})})
 
 (format-detection-demo)
 
@@ -157,11 +169,14 @@
   (let [sample-data {:service "web-tutorial"
                      :features ["content-negotiation" "multiple-formats" "flexible-api"]}
         json-response (m/encode "application/json" sample-data)
-        edn-response (m/encode "application/edn" sample-data)]
+        edn-response (m/encode "application/edn" sample-data)
+        yaml-response (m/encode custom-instance "application/yaml" sample-data)]
     {:json json-response
      :edn edn-response
+     :yaml yaml-response
      :decoded-json (m/decode "application/json" json-response)
-     :decoded-edn (m/decode "application/edn" edn-response)}))
+     :decoded-edn (m/decode "application/edn" edn-response)
+     :decoded-yaml (m/decode custom-instance "application/yaml" yaml-response)}))
 
 (content-negotiation-demo)
 

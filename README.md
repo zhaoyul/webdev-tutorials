@@ -71,6 +71,7 @@ The training template includes:
 - **Ring** - Web application interface
 - **Reitit** - Fast data-driven router with Swagger support
 - **Malli** - Schema specification and validation
+- **Muuntaja** - Pluggable HTTP transcoding library with support for multiple formats
 - **Clerk** - Scientific notebook environment for interactive development
 
 ## Training Path

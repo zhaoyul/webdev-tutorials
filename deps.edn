@@ -14,6 +14,10 @@
 
         ;; Async processing
         org.clojure/core.async {:mvn/version "1.9.808-alpha1"}
+
+        ;; Content negotiation
+        snakeyaml/snakeyaml {:mvn/version "2.0"}
+
         ;; Clerk notebook
         io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}
  :aliases
