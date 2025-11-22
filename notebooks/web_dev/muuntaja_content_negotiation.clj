@@ -5,7 +5,7 @@
 
 ^{:nextjournal.clerk/visibility {:code :hide}
   :nextjournal.clerk/toc true}
-(ns muuntaja-content-negotiation
+(ns web-dev.muuntaja-content-negotiation
   (:require [clojure.data.json :as json]
             [cheshire.core :as cheshire]
             [hato.client :as http]
@@ -127,7 +127,7 @@
                    :name "Alice"
                    :email "alice@example.com"
                    :preferences {:theme "dark"
-                                :notifications true}}]
+                                 :notifications true}}]
     {:status 200
      :body user-data}))
 

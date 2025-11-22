@@ -4,22 +4,22 @@
 - 角色: 精通 Clojure 的全栈工程师, 负责保持教程示例的可运行性与一致性.
 - 目标: 通过 Clojure notebook 中文示例展示各类 Clojure 技术栈, 保持可读可演示, 不引入与教学目的相悖的复杂度.
 - 技术栈: Clojure 1.12.3, Ring (jetty/undertow adapters), Reitit, Muuntaja, Malli, core.async, HugSQL + next.jdbc + H2, nextjournal/Clerk, tools.build/test-runner.
-- 主入口: `rc.web-tutorial` (`greet`/`-main`), Web 演示在 `rc.web-tutorial.server` 通过 Jetty 3000 端口启动.
+- 主体内容: Clerk notebooks 为主, 展示 web/server、middleware、Muuntaja、Malli、HugSQL 等主题。
 
 ## 2. 操作约束
 - 绝不: 泄露或提交凭据/密钥; 擅自修改 CI 配置或 build 脚本的全局行为; 删除现有测试; 在 notebook 中插入中文注释; 改写教程用例的预期行为.
 - 先询问: 添加/升级依赖或插件; 变更数据库结构/SQL 示例; 引入新目录层级; 改动端口/服务启动方式; 大规模重构示例代码.
-- 始终: 代码注释与文档使用中文(英文标点); notebook 内容保持中文; 修改/读取 Clojure 代码优先使用 Clojure-mcp 工具 (`clojure_eval`/`clojure_edit` 等); 遵循现有目录与命名模式; 变更后尽量运行可用的构建/测试命令.
+- 始终: 代码注释与文档使用中文(英文标点); notebook 内容保持中文; 修改/读取 Clojure 代码优先使用 Clojure-mcp 工具 (`clojure_eval`/`clojure_edit` 等); 在 clojure-mcp 可用时用 `clojure_eval` 动态验证修改的 Clojure 代码; 遵循现有目录与命名模式; 变更后尽量运行可用的构建/测试命令.
 
 ## 3. 架构与目录结构
-- 模式: 教程式单体, Ring 应用示例 + Clerk notebooks + HugSQL 示例.
+- 模式: 教程式 notebooks 为主, Ring/Reitit/Muuntaja/HugSQL 等示例集中在 Clerk。
 - 地图:
-  - `src/rc/web_tutorial.clj`: 问候入口与 `-main`.
-  - `src/rc/web_tutorial/server.clj`: 内容协商/Jetty 示例, 挂载 `complete-api-app`.
-  - `notebooks/`: Clerk 示例 (core.async、内容协商、middleware、Malli、HugSQL 等), 全部中文说明.
+  - `notebooks/web_dev/`: 原 notes + Muuntaja 内容协商示例, 侧重 web/middleware/内容协商。
+  - `notebooks/hugsql/`: HugSQL 相关可执行笔记。
+  - `notebooks/clojure112/`: 1.12.x 新特性演示。
+  - `notebooks/core_async/`: core.async 流程/监控演示。
   - `resources/hugsql/`: SQL 示例 (`playground.sql`).
-  - `env/dev/clj/user.clj`: REPL/Clerk 辅助函数.
-  - `test/rc/web_tutorial_test.clj`: 基础测试.
+  - `env/dev/clj/user.clj`: REPL/Clerk 辅助函数。
   - 构建/元数据: `deps.edn`, `build.clj`, `README.md`, `CHANGELOG.md`.
 
 ## 4. 编码标准(隐性知识)
@@ -30,10 +30,7 @@
 - 错误处理: Web 示例沿用 Muuntaja/Reitit 默认处理流程, 避免自定义异常层; 保持内容协商与返回格式的演示一致。
 
 ## 5. 测试策略
-- 框架: `clojure.test`.
-- 位置: `test/rc/web_tutorial_test.clj`.
-- 运行命令: `clojure -T:build test`; CI 用 `clojure -T:build ci`.
-- 风格: 保持现有断言与输出格式; 演示型测试应直观反映教程行为.
+- 当前无保留自动化测试文件; 如新增示例代码, 需自带最小验证或在笔记中给出运行说明。可按需使用 `clojure -T:build test` 模板添加测试。
 
 ## 6. 构建与 CI/CD
 - 本地运行: `clojure -X:run-x` 或 `clojure -M:run-m`.
