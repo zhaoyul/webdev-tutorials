@@ -9,7 +9,7 @@
 ## 2. 操作约束
 - 绝不: 泄露或提交凭据/密钥; 擅自修改 CI 配置或 build 脚本的全局行为; 删除现有测试; 在 notebook 中插入中文注释; 改写教程用例的预期行为.
 - 先询问: 添加/升级依赖或插件; 变更数据库结构/SQL 示例; 引入新目录层级; 改动端口/服务启动方式; 大规模重构示例代码.
-- 始终: 代码注释与文档使用中文(英文标点); notebook 内容保持中文; 修改/读取 Clojure 代码优先使用 Clojure-mcp 工具 (`clojure_eval`/`clojure_edit` 等); 在 clojure-mcp 可用时用 `clojure_eval` 动态验证修改的 Clojure 代码; 遵循现有目录与命名模式; 变更后尽量运行可用的构建/测试命令.
+- 始终: 代码注释与文档使用中文(英文标点); notebook 内容保持中文; 修改/读取 Clojure 代码优先使用 Clojure-mcp 工具 (`clojure_eval`/`clojure_edit` 等); 在 clojure-mcp 可用时用 `clojure_eval` 动态验证修改的 Clojure 代码; 静态代码片段在文档/笔记中使用 Markdown fenced code（```clojure ... ``` 等）呈现; Clerk 元信息显式设置可见性（如 `^{:nextjournal.clerk/visibility {:code :hide :result :show}}`）按需设置; 遵循现有目录与命名模式; 变更后尽量运行可用的构建/测试命令.
 
 ## 3. 架构与目录结构
 - 模式: 教程式 notebooks 为主, Ring/Reitit/Muuntaja/HugSQL 等示例集中在 Clerk。

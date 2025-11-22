@@ -1,9 +1,44 @@
-^{:nextjournal.clerk/visibility {:code :hide}
-  :nextjournal.clerk/toc true}
 (ns hugsql.overview
+  {:nextjournal.clerk/visibility {:code :hide :result :show}
+   :nextjournal.clerk/toc false}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; # HugSQL 笔记目录
 ;; 本页汇总 `notebooks/hugsql/` 下各笔记及作用, 便于快速导航。
 
-(clerk/md "# HugSQL 笔记目录\n\n## 目录映射 (org 样式)\n\n* 安装\n  - [install.clj](install.clj)\n* Getting Started\n  - Start with SQL: [getting_sql.clj](getting_sql.clj) (配套 [playground.sql](../../resources/hugsql/playground.sql))\n  - Now Some Clojure: [getting_clj.clj](getting_clj.clj)\n* 使用 HugSQL\n  - def-db-fns: [getting_clj.clj](getting_clj.clj), [usage_fns.clj](usage_fns.clj)\n  - def-sqlvec-fns: [getting_clj.clj](getting_clj.clj), [usage_fns.clj](usage_fns.clj)\n  - Other Useful Functions: [usage_fns.clj](usage_fns.clj)\n  - DDL (Create/Drop): [crud.clj](crud.clj)\n  - Insert/Update/Delete/Select: [crud.clj](crud.clj)\n  - Transactions: [transactions.clj](transactions.clj)\n  - Composability: [composability.clj](composability.clj)\n    - Clojure Expressions: [composability.clj](composability.clj)\n    - Snippets: [composability.clj](composability.clj)\n  - Advanced Usage: [advanced_usage.clj](advanced_usage.clj)\n* 深入介绍\n  - SQL File Conventions: [getting_sql.clj](getting_sql.clj), [deep_dive.clj](deep_dive.clj)\n  - Command/Result: [deep_dive.clj](deep_dive.clj)\n  - Parameter Types: [deep_dive.clj](deep_dive.clj), [composability.clj](composability.clj)\n    - SQL Value/Value List/Tuple/Tuple List: [deep_dive.clj](deep_dive.clj), [crud.clj](crud.clj)\n    - Identifier/Identifier List: [deep_dive.clj](deep_dive.clj), [crud.clj](crud.clj)\n    - Raw SQL: [advanced_usage.clj](advanced_usage.clj)\n    - Snippet/Snippet List: [composability.clj](composability.clj)\n\n## 支撑与导航\n- 公共初始化: [common.clj](common.clj)\n- FAQ/对比: [faq.clj](faq.clj)\n- 适配器切换: [adapters.clj](adapters.clj)\n")
+(clerk/md "
+# HugSQL 笔记目录
+
+## 目录映射 (org 样式)
+
+- *安装*
+  - [install.clj](install.clj)
+- *入门*
+  - 从 SQL 开始: [getting_sql.clj](getting_sql.clj) (配套 [playground.sql](../../resources/hugsql/playground.sql))
+  - 现在来点 Clojure: [getting_clj.clj](getting_clj.clj)
+- *使用 HugSQL*
+  - def-db-fns: [getting_clj.clj](getting_clj.clj), [usage_fns.clj](usage_fns.clj)
+  - def-sqlvec-fns: [getting_clj.clj](getting_clj.clj), [usage_fns.clj](usage_fns.clj)
+  - 其他有用函数: [usage_fns.clj](usage_fns.clj)
+  - DDL (建表/删表): [crud.clj](crud.clj)
+  - Insert/Update/Delete/Select: [crud.clj](crud.clj)
+  - 事务: [transactions.clj](transactions.clj)
+  - 组合性: [composability.clj](composability.clj)
+    - Clojure 表达式: [composability.clj](composability.clj)
+    - Snippet 片段: [composability.clj](composability.clj)
+  - 高级用法: [advanced_usage.clj](advanced_usage.clj)
+- *深入介绍*
+  - SQL 文件约定: [getting_sql.clj](getting_sql.clj), [deep_dive.clj](deep_dive.clj)
+  - 命令/结果: [deep_dive.clj](deep_dive.clj)
+  - 参数类型: [deep_dive.clj](deep_dive.clj), [composability.clj](composability.clj), [crud.clj](crud.clj)
+    - 值/值列表/元组/元组列表: [deep_dive.clj](deep_dive.clj), [crud.clj](crud.clj)
+    - 标识符/标识符列表: [deep_dive.clj](deep_dive.clj), [crud.clj](crud.clj)
+    - 原生 SQL: [advanced_usage.clj](advanced_usage.clj)
+    - Snippet 及列表: [composability.clj](composability.clj)
+- *常见问题/对比*
+  - FAQ: [faq.clj](faq.clj)
+  - 适配器切换: [adapters.clj](adapters.clj)
+
+## 支撑与导航
+- 公共初始化: [common.clj](common.clj)
+")
