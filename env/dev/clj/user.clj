@@ -7,8 +7,7 @@
    [clojure.repl :refer [doc source find-doc apropos dir]]
    [lambdaisland.classpath.watch-deps :as watch-deps]
    [clojure.tools.namespace.repl :refer [refresh]]
-   [nextjournal.clerk :as clerk]
-   [rc.web-tutorial :as app]))
+   [nextjournal.clerk :as clerk]))
 
 (defonce ^:private clerk-server (atom nil))
 (defonce ^:private watcher (atom nil))
@@ -16,18 +15,13 @@
 (defn help
   "打印常用的 REPL 帮助."
   []
-  (println "可用函数: help, reload, greet, start-watch!, stop-watch!, start-clerk!, stop-clerk!, show-notebook, publish-notebooks.")
-  (println "示例: (greet) (greet \"Alice\") (start-watch!) (start-clerk!) (show-notebook \"notebooks/clojure112_features.clj\")."))
+  (println "可用函数: help, reload, start-watch!, stop-watch!, start-clerk!, stop-clerk!, show-notebook, publish-notebooks.")
+  (println "示例: (start-watch!) (start-clerk!) (show-notebook \"notebooks/clojure112_features.clj\")."))
 
 (defn reload
   "刷新已变更的命名空间."
   []
   (refresh))
-
-(defn greet
-  "调用应用的 greet 函数."
-  ([] (app/greet {}))
-  ([name] (app/greet {:name name})))
 
 (declare stop-clerk!)
 
@@ -88,7 +82,6 @@
 (comment
   (help)
   (reload)
-  (greet "Alice")
   (start-clerk!)
   (show-notebook "notebooks/clojure112_features.clj")
   (publish-notebooks))

@@ -3,7 +3,6 @@
   (:require [clojure.tools.deps :as t]
             [clojure.tools.build.api :as b]))
 
-(def lib 'net.clojars.rc/web-tutorial)
 (def version "0.1.0-SNAPSHOT")
 (def main 'rc.web-tutorial)
 (def class-dir "target/classes")
@@ -23,8 +22,7 @@
 
 (defn- uber-opts [opts]
   (assoc opts
-         :lib lib :main main
-         :uber-file (format "target/%s-%s.jar" lib version)
+         :uber-file (format "target/%s-%s.jar" "lib" version)
          :basis (b/create-basis {})
          :class-dir class-dir
          :src-dirs ["src"]
