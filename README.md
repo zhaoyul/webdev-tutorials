@@ -1,39 +1,50 @@
-# web-tutorial
+# webdev-tutorials
 
-中文简介：Clojure Web 教程与 Clerk/HugSQL 实战笔记。
+中文简介：围绕 Clojure Web 技术栈的 Clerk 笔记与 HugSQL 演示，涵盖 Ring/Reitit、Muuntaja、Malli、core.async、HugSQL + next.jdbc + H2、Clerk 查看器等主题。主要依赖 Clojure 1.12.3。
 
-## 培训 Notebook 导航
+## Notebook 导航
 
-### Web 开发主线 (`notebooks/` 与 `notebooks/notes/`)
-- `notes/starting_web_server.clj`：最简 HTTP 服务
-- `notes/starting_ring_server.clj`：Ring 应用基础
-- `notes/adding_simple_middleware.clj`：自定义中间件入门
-- `notes/demonstrating_middleware_functionality.clj`：中间件链条行为
-- `notes/adding_swagger_support.clj`：接入 Swagger 文档
-- `notes/malli_spec_usage.clj`：使用 Malli 进行数据校验
-- `muuntaja_content_negotiation.clj`：Muuntaja 内容协商示例
-- `core_async_flow.clj`：core.async flow/flow-monitor 示例
-- `clojure112_features.clj`：Clojure 1.12 新特性示例
+### Web 开发（`notebooks/web_dev/`）
+- `starting_web_server.clj`：最简 Jetty/Undertow HTTP 服务
+- `starting_ring_server.clj`：Ring 应用结构与处理函数
+- `adding_simple_middleware.clj`：自定义中间件与顺序示例
+- `demonstrating_middleware_functionality.clj`：中间件链路观测
+- `muuntaja_content_negotiation.clj`：Muuntaja 内容协商
+- `malli_spec_usage.clj`：Malli Schema 校验
+- `adding_swagger_support.clj`：Reitit + Swagger 文档
 
-### HugSQL 专题 (`notebooks/hugsql/`)
-依赖 `notebooks/hugsql/common.clj` 提供适配器、H2 内存库与 SQL 绑定。
-- `intro.clj`：概览
-- `install.clj`：依赖说明（deps.edn 已内置 hugsql/next.jdbc/H2）
-- `getting_sql.clj`：SQL 注释约定展示
-- `getting_clj.clj`：生成的函数与 sqlvec 示例
-- `usage_fns.clj`：def-db-fns/sqlvec 演示
-- `crud.clj`：DDL/Insert/Update/Delete/Select
-- `transactions.clj`：事务示例
-- `composability.clj`：表达式与 Snippet 组合
-- `advanced_usage.clj`：getGeneratedKeys、原生 SQL 白名单、sqlvec 调试
-- `deep_dive.clj`：深入主题索引
-- `adapters.clj`：适配器切换示例
-- `faq.clj`：常见问题摘要
+### HugSQL 专题（`notebooks/hugsql/`，依赖 `resources/hugsql/playground.sql` 与 `notebooks/hugsql/common.clj`）
+- 入门：`intro.clj`、`install.clj`
+- SQL/生成函数：`getting_sql.clj`、`getting_clj.clj`、`usage_fns.clj`
+- CRUD/事务：`crud.clj`、`transactions.clj`
+- 组合/调试：`composability.clj`、`advanced_usage.clj`、`adapters.clj`
+- 深入索引：`deep_dive.clj`、`faq.clj`、`overview.clj`
+
+### 其他专题
+- `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
+- `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示
+- `notebooks/book.clj`：Clerk 官方文档译注与查看器示例
+
+### 辅助文件
+- `env/dev/clj/user.clj`：REPL/Clerk 启动与构建辅助函数
+- `resources/hugsql/playground.sql`：HugSQL 示例 SQL
+- `chinook.db`：示例 SQLite 数据库（用于 Clerk/HugSQL 查询演示）
 
 ## 使用指南
-- 启动 Clerk 浏览全部笔记：`clojure -M:clerk`（默认 http://localhost:7777）
-- 直接运行主程序示例：`clojure -X:run-x` 或 `clojure -M:run-m`
-- 测试/构建：`clojure -T:build test`，CI/uberjar：`clojure -T:build ci`
+- 启动 Clerk 浏览笔记（默认 http://localhost:7777）：  
+  ```sh
+  clojure -M:clerk
+  ```  
+  或在 `:dev` REPL 中使用 `(user/start-clerk!)`、`(user/show-notebook \"notebooks/web_dev/starting_web_server.clj\")`。
+- 构建静态笔记（使用 `notebooks/*`，默认索引 `notebooks/hugsql/overview.clj`）：  
+  ```sh
+  clojure -M:nextjournal/clerk
+  ```
+- 测试与 CI/uberjar：  
+  ```sh
+  clojure -T:build test
+  clojure -T:build ci
+  ```
 
 ## License
 
