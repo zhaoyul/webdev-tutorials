@@ -1,59 +1,45 @@
-# Project Context: web-tutorial
+# AGENTS.md - 语境与参与规则
 
-1. 项目中代码注释, 文档全部使用中文, 标点为英文标点.
-2. notebook 内容使用中文.
-3. 修改/读取 Clojure 代码时, 优先使用 Clojure-mcp 工具(`clojure_eval`/`clojure_edit` 等); 仅在不可行时再用 shell/file 操作.
+## 1. 项目概述与角色
+- 角色: 精通 Clojure 的全栈工程师, 负责保持教程示例的可运行性与一致性.
+- 目标: 通过 Clojure notebook 中文示例展示各类 Clojure 技术栈, 保持可读可演示, 不引入与教学目的相悖的复杂度.
+- 技术栈: Clojure 1.12.3, Ring (jetty/undertow adapters), Reitit, Muuntaja, Malli, core.async, HugSQL + next.jdbc + H2, nextjournal/Clerk, tools.build/test-runner.
+- 主入口: `rc.web-tutorial` (`greet`/`-main`), Web 演示在 `rc.web-tutorial.server` 通过 Jetty 3000 端口启动.
 
+## 2. 操作约束
+- 绝不: 泄露或提交凭据/密钥; 擅自修改 CI 配置或 build 脚本的全局行为; 删除现有测试; 在 notebook 中插入中文注释; 改写教程用例的预期行为.
+- 先询问: 添加/升级依赖或插件; 变更数据库结构/SQL 示例; 引入新目录层级; 改动端口/服务启动方式; 大规模重构示例代码.
+- 始终: 代码注释与文档使用中文(英文标点); notebook 内容保持中文; 修改/读取 Clojure 代码优先使用 Clojure-mcp 工具 (`clojure_eval`/`clojure_edit` 等); 遵循现有目录与命名模式; 变更后尽量运行可用的构建/测试命令.
 
-## Project Overview
-- **Name**: web-tutorial
-- **Description**: A Clojure web tutorial project
-- **Version**: 0.1.0-SNAPSHOT
-- **Main Namespace**: rc.web-tutorial
-- **License**: Eclipse Public License v1.0
+## 3. 架构与目录结构
+- 模式: 教程式单体, Ring 应用示例 + Clerk notebooks + HugSQL 示例.
+- 地图:
+  - `src/rc/web_tutorial.clj`: 问候入口与 `-main`.
+  - `src/rc/web_tutorial/server.clj`: 内容协商/Jetty 示例, 挂载 `complete-api-app`.
+  - `notebooks/`: Clerk 示例 (core.async、内容协商、middleware、Malli、HugSQL 等), 全部中文说明.
+  - `resources/hugsql/`: SQL 示例 (`playground.sql`).
+  - `env/dev/clj/user.clj`: REPL/Clerk 辅助函数.
+  - `test/rc/web_tutorial_test.clj`: 基础测试.
+  - 构建/元数据: `deps.edn`, `build.clj`, `README.md`, `CHANGELOG.md`.
 
-## Project Structure
-- 根目录: `build.clj`, `deps.edn`, `README.md`, `CHANGELOG.md`
-- 代码: `src/rc/web_tutorial.clj` (greet/-main), `src/rc/web_tutorial/server.clj` (Jetty 内容协商示例)
-- 资源: `resources/hugsql/playground.sql` (HugSQL 示例 SQL)
-- Notebook:
-  - `notebooks/notes/`：starting_web_server, starting_ring_server, adding_simple_middleware, demonstrating_middleware_functionality, adding_swagger_support, malli_spec_usage
-  - `notebooks/muuntaja_content_negotiation.clj`, `notebooks/core_async_flow.clj`, `notebooks/clojure112_features.clj`
-  - `notebooks/hugsql/`：common, intro, install, getting_sql, getting_clj, usage_fns, crud, transactions, composability, advanced_usage, deep_dive, adapters, faq
-- 辅助: `env/dev/clj/user.clj` (REPL/Clerk 辅助), `doc/intro.md`, `test/rc/web_tutorial_test.clj`
+## 4. 编码标准(隐性知识)
+- 语言: 注释、docstring、提交说明均用简体中文(英文标点), notebook 文本保持中文。
+- 命名: namespace 使用下划线分词(`web_tutorial`), 函数小写短横线分隔; 端点/应用命名沿用现有 Reitit/Muuntaja 示例风格; 参数避免覆盖核心函数名; 文件名用 snake_case 对应 namespace。
+- 风格: 示例代码保持简洁、可读、纯函数与不可变数据优先, 避免不必要的 `atom`/`ref` 与过度抽象; 遵循社区风格指南; 函数尽量短小(建议 ≤30 行), 文件尽量精简(建议 ≤300 行)以便教学。
+- 文档: 注释/README/笔记本中文; 新增函数写简短中文 docstring 说明用途; 新增示例写清运行方式与依赖。
+- 错误处理: Web 示例沿用 Muuntaja/Reitit 默认处理流程, 避免自定义异常层; 保持内容协商与返回格式的演示一致。
 
-## Dependencies (关键)
-- 运行: `org.clojure/clojure 1.12.3`, `ring-core`, `ring-jetty-adapter`, `luminus/ring-undertow-adapter`, `reitit`, `muuntaja`, `malli`, `core.async`, `buddy-auth`, `hato`, `snakeyaml`
-- Notebook/工具: `nextjournal/clerk`
-- HugSQL/DB: `hugsql`, `hugsql-adapter-next-jdbc`, `next.jdbc`, `h2`
-- Dev/Test: `tools.namespace`, `test.check`, `tools.build`, `test-runner`
+## 5. 测试策略
+- 框架: `clojure.test`.
+- 位置: `test/rc/web_tutorial_test.clj`.
+- 运行命令: `clojure -T:build test`; CI 用 `clojure -T:build ci`.
+- 风格: 保持现有断言与输出格式; 演示型测试应直观反映教程行为.
 
-## Aliases
-- `:run-m` - Run via main opts
-- `:run-x` - Run via exec fn
-- `:build` - Build utilities using tools.build
-- `:dev` - Development dependencies
-- `:test` - Testing dependencies and paths
-- `:nrepl` - nREPL server
-- `:mcp` - MCP server for editor integration
+## 6. 构建与 CI/CD
+- 本地运行: `clojure -X:run-x` 或 `clojure -M:run-m`.
+- 构建/发布: `clojure -T:build ci`; 依赖 tools.build.
+- 开发辅助: `:dev` 提供 REPL/Clerk, `:mcp` 用于编辑集成.
 
-## Main Functions
-- `greet` / `-main`: 入口问候
-- `server/start-server`: 以 Jetty 启动内容协商示例 (3000)
-
-## Build Commands
-- Run tests: `clojure -T:build test`
-- CI pipeline: `clojure -T:build ci`
-- Run application: `clojure -X:run-x` or `clojure -M:run-m`
-- Create JAR: `clojure -T:build ci`
-
-## Development Environment / MCP
-- Clojure 1.12.3, tools.build, test runner
-- 统一使用 Clojure-mcp 读写 Clojure/ClojureScript: 优先 `clojure_eval` 执行、`clojure_edit`/`clojure_edit_replace_sexp` 修改; 仅在 mcp 不可用时再用 shell/file 操作.
-
-## 系统架构
-- 应用入口: `src/rc/web_tutorial.clj` 中 `greet` 负责输出问候, `-main` 从命令行接收名字后调用 `greet`.
-- Web 演示: `src/rc/web_tutorial/server.clj` 以 Jetty 形式启动 `muuntaja-content-negotiation` notebook 提供的 `complete-api-app`, 默认端口 3000, 适合内容协商示例.
-- Notebook 组件: `notebooks/` 目录存放 Clerk 笔记本, 包含 core.async flow, 内容协商, middleware, Malli 等主题的可执行示例, 通过 `:clerk` alias 运行.
-- 构建与测试: `build.clj` 基于 tools.build, `clojure -T:build test|ci` 运行测试/CI; `:test` alias 提供 test runner.
-- 本地服务: `:run-m` 和 `:run-x` 以命令行/exec 方式运行入口; `:nrepl` 和 `:mcp` 分别启动 REPL 与 MCP server 支撑开发工具链.
+## 7. 重构与技术债务
+- 策略: 小步、可验证, 以保持教程可运行为最高优先; 避免引入与教学目标无关的抽象或依赖.
+- 已知关注: Web 演示与 notebooks 需保持内容/接口一致; HugSQL 示例依赖 `resources/hugsql` SQL 与 notebook 文档, 调整时同步更新说明; 端口/路由/响应格式变动需明确标注给读者.
