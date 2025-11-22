@@ -13,6 +13,9 @@
 ;; Select & 指定列
 (clerk/table (c/guests-by-ids-cols c/ds {:ids [1 2] :cols ["name" "specialty"]}))
 
+;; Tuple 参数示例: (id, name)
+(clerk/table [(c/guest-by-id-name c/ds {:id-name [1 "A"]})])
+
 ;; Update/Delete
 (def upd (c/update-guest c/ds {:id 1 :specialty "gamma"}))
 (def del (c/delete-guest c/ds {:id 2}))

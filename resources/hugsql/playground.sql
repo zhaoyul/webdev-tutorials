@@ -31,6 +31,9 @@ select * from guests where id = :id;
 -- :name guests-by-ids-cols :? :*
 select :i*:cols from guests where id in (:v*:ids) order by id;
 
+-- :name guest-by-id-name :? :1
+select * from guests where (id, name) = :t:id-name;
+
 -- 更新/删除
 -- :name update-guest :! :n
 update guests set specialty = :specialty where id = :id;

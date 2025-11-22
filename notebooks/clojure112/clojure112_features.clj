@@ -132,8 +132,8 @@
 
 ;; ## 更简洁的多维数组
 ;; Clojure此前对数组的类型提示的方式是Java内部类名
-;; - "[Ljava.lang.String;" - 一维字符串数组
-;; - "[[D" - 2D 原始double类型数组
+;; - `[Ljava.lang.String;` - 一维字符串数组
+;; - `[[D` - 2D 原始double类型数组
 ;; 这种写法非常之繁琐, 可读性不高, 且容易出错, 因为需要写完整的类名, 且很容易出错.
 
 ;; 在1.12版本以后, 我们可以这么写 `ComponentClass/#dimensions`
@@ -162,7 +162,6 @@
 (->> (.stream (range 10))
      (stream-seq!)
      (map inc))
-;; => (1 2 3 4 5 6 7 8 9 10)
 
 
 ;; `stream-reduce`
@@ -174,18 +173,16 @@
 (def xf (comp (filter even?) (map #(* % 2))))
 (->> (.stream (range 10))
      (stream-transduce! xf + 0))
-;; => 40
 
 ;; `stream-into!`
 (->> (.stream (range 10))
      (stream-into! []))
-;; => [0 1 2 3 4 5 6 7 8 9]
 
 ;; `stream-into!`支持`transducer`
-(def xf (comp (map +) (filter even?) ))
+(def xf (comp (map +) (filter even?)))
 (->> (.stream (range 10))
      (stream-into! [] xf))
-;; => [0 2 4 6 8]
+
 
 ;; ### 参考资料
 
@@ -196,7 +193,7 @@
 
 
 (defonce _a (clerk/serve! {:browse? true}))
-(clerk/show! "notebooks/clojure112_features.clj")
+(clerk/show! "notebooks/clojure112/clojure112_features.clj")
 (comment
   (clerk/clear-cache!)
   (clerk/build! {:paths ["clojrue112_features.clj"]})
