@@ -228,7 +228,12 @@
 
 ;; 启动服务器的函数 (这在实际运行时会被调用)
 (defn start-server []
-  (jetty/run-jetty complete-api-app {:port 3000 :join? false}))
+  ;; 使用端口0让系统分配空闲端口, 避免占用冲突
+  (let [server (jetty/run-jetty complete-api-app {:port 0 :join? false})
+        connector (first (.getConnectors server))
+        port (.getLocalPort connector)]
+    {:server server
+     :port port}))
 
 ;; ## 使用 HTTP 客户端查看内容协商结果
 
@@ -237,10 +242,11 @@
 
 (defn start-demo-server! []
   (when-not @server-instance
-    (reset! server-instance (start-server))))
+    (reset! server-instance (start-server)))
+  @server-instance)
 
 (defn stop-demo-server! []
-  (when-let [server @server-instance]
+  (when-let [{:keys [server]} @server-instance]
     (.stop server)
     (reset! server-instance nil)))
 
@@ -254,23 +260,23 @@
 
 (defn http-client-results []
   ;; 自动启动示例服务, 请求完毕后立即关闭, 避免端口占用
-  (start-demo-server!)
-  (try
-    (let [url "http://localhost:3000/users"
-          accept-values ["application/json"
-                         "application/edn"
-                         "application/transit+json"]]
-      (into {}
-            (for [accept accept-values
-                  :let [response (http/get url {:headers {"Accept" accept}
-                                                :as :byte-array})
-                        raw-body (String. ^bytes (:body response) "UTF-8")]]
-              [accept {:status (:status response)
-                       :content-type (get-in response [:headers "content-type"])
-                       :raw-body raw-body
-                       :decoded (decode-body accept (:body response))}])))
-    (finally
-      (stop-demo-server!))))
+  (let [{:keys [port]} (start-demo-server!)
+        url (format "http://localhost:%s/users" port)]
+    (try
+      (let [accept-values ["application/json"
+                           "application/edn"
+                           "application/transit+json"]]
+        (into {}
+              (for [accept accept-values
+                    :let [response (http/get url {:headers {"Accept" accept}
+                                                  :as :byte-array})
+                          raw-body (String. ^bytes (:body response) "UTF-8")]]
+                [accept {:status (:status response)
+                         :content-type (get-in response [:headers "content-type"])
+                         :raw-body raw-body
+                         :decoded (decode-body accept (:body response))}])))
+      (finally
+        (stop-demo-server!)))))
 
 (defn http-client-table-data []
   (let [results (http-client-results)]
@@ -281,8 +287,10 @@
        :raw-body raw-body
        :decoded-value decoded})))
 
-(clerk/table
- (http-client-table-data))
+(comment
+  ;; 如需查看表格结果, 手动运行此块, 运行后会自动启动并关闭示例服务
+  (clerk/table
+   (http-client-table-data)))
 
 ;; 上面的 (clerk/table (http-client-table-data)) 会直接在 Notebook 中渲染一张表格
 ;; 每行都展示不同 Accept 头的状态码、原始字符串以及 Muuntaja 解码结果, 更直观地查看内容协商行为

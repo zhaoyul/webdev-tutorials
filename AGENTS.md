@@ -65,9 +65,17 @@ web-tutorial/
 - `build.clj` - Build script using tools.build
 - `deps.edn` - Project dependencies and aliases
 - `README.md` - Project documentation
+- Clerk Notebooks: `notebooks/` 目录包含教程示例; HugSQL 演示笔记 `notebooks/hugsql/demo.clj`
 
 ## Development Environment
 - Clojure 1.12.3
 - Tools.build for building
 - Test runner for tests
 - MCP server for tool integration
+
+## 系统架构
+- 应用入口: `src/rc/web_tutorial.clj` 中 `greet` 负责输出问候, `-main` 从命令行接收名字后调用 `greet`.
+- Web 演示: `src/rc/web_tutorial/server.clj` 以 Jetty 形式启动 `muuntaja-content-negotiation` notebook 提供的 `complete-api-app`, 默认端口 3000, 适合内容协商示例.
+- Notebook 组件: `notebooks/` 目录存放 Clerk 笔记本, 包含 core.async flow、内容协商、middleware、Malli 等主题的可执行示例, 通过 `:clerk` alias 运行.
+- 构建与测试: `build.clj` 基于 tools.build, `clojure -T:build test|ci` 运行测试/CI; `:test` alias 提供 test runner.
+- 本地服务: `:run-m` 和 `:run-x` 以命令行/exec 方式运行入口; `:nrepl` 和 `:mcp` 分别启动 REPL 与 MCP server 支撑开发工具链.
