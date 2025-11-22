@@ -1,91 +1,39 @@
 # web-tutorial
 
-A comprehensive Clojure web development training template using Clerk notebooks.
+中文简介：Clojure Web 教程与 Clerk/HugSQL 实战笔记。
 
-## Installation
+## 培训 Notebook 导航
 
-Download from https://github.com/rc/web-tutorial
+### Web 开发主线 (`notebooks/` 与 `notebooks/notes/`)
+- `notes/starting_web_server.clj`：最简 HTTP 服务
+- `notes/starting_ring_server.clj`：Ring 应用基础
+- `notes/adding_simple_middleware.clj`：自定义中间件入门
+- `notes/demonstrating_middleware_functionality.clj`：中间件链条行为
+- `notes/adding_swagger_support.clj`：接入 Swagger 文档
+- `notes/malli_spec_usage.clj`：使用 Malli 进行数据校验
+- `muuntaja_content_negotiation.clj`：Muuntaja 内容协商示例
+- `core_async_flow.clj`：core.async flow/flow-monitor 示例
+- `clojure112_features.clj`：Clojure 1.12 新特性示例
 
-## Training Content
+### HugSQL 专题 (`notebooks/hugsql/`)
+依赖 `notebooks/hugsql/common.clj` 提供适配器、H2 内存库与 SQL 绑定。
+- `intro.clj`：概览
+- `install.clj`：依赖说明（deps.edn 已内置 hugsql/next.jdbc/H2）
+- `getting_sql.clj`：SQL 注释约定展示
+- `getting_clj.clj`：生成的函数与 sqlvec 示例
+- `usage_fns.clj`：def-db-fns/sqlvec 演示
+- `crud.clj`：DDL/Insert/Update/Delete/Select
+- `transactions.clj`：事务示例
+- `composability.clj`：表达式与 Snippet 组合
+- `advanced_usage.clj`：getGeneratedKeys、原生 SQL 白名单、sqlvec 调试
+- `deep_dive.clj`：深入主题索引
+- `adapters.clj`：适配器切换示例
+- `faq.clj`：常见问题摘要
 
-This project contains a complete training curriculum for learning web development with Clojure:
-
-1. **01_starting_web_server.clj** - Introduction to basic web servers
-2. **02_starting_ring_server.clj** - Building Ring-based web applications
-3. **03_adding_simple_middleware.clj** - Creating and using middleware
-4. **04_demonstrating_middleware_functionality.clj** - Understanding middleware chains
-5. **05_adding_swagger_support.clj** - API documentation with Swagger
-6. **06_malli_spec_usage.clj** - Data validation with Malli
-7. **muuntaja_content_negotiation.clj** - Content negotiation with Muuntaja
-
-## Usage
-
-### Running Clerk Notebooks
-
-To view and interact with the training notebooks:
-
-```bash
-clojure -M:clerk
-```
-
-This will start Clerk server at http://localhost:7777 where you can browse the notebooks.
-
-### Running the Project Directly
-
-Run the project directly, via `:exec-fn`:
-
-    $ clojure -X:run-x
-    Hello, Clojure!
-
-Run the project, overriding the name to be greeted:
-
-    $ clojure -X:run-x :name '"Someone"'
-    Hello, Someone!
-
-Run the project directly, via `:main-opts` (`-m rc.web-tutorial`):
-
-    $ clojure -M:run-m
-    Hello, World!
-
-Run the project, overriding the name to be greeted:
-
-    $ clojure -M:run-m Via-Main
-    Hello, Via-Main!
-
-Run the project's tests (they'll fail until you edit them):
-
-    $ clojure -T:build test
-
-Run the project's CI pipeline and build an uberjar (this will fail until you edit the tests to pass):
-
-    $ clojure -T:build ci
-
-Run that uberjar:
-
-    $ java -jar target/web-tutorial-0.1.0-SNAPSHOT.jar
-
-## Dependencies
-
-The training template includes:
-
-- **Ring** - Web application interface
-- **Reitit** - Fast data-driven router with Swagger support
-- **Malli** - Schema specification and validation
-- **Muuntaja** - Pluggable HTTP transcoding library with support for multiple formats
-- **Clerk** - Scientific notebook environment for interactive development
-
-## Training Path
-
-The notebooks are designed to be completed in order:
-
-1. Start with basic web server concepts
-2. Progress to Ring applications with routing
-3. Learn about middleware patterns
-4. Explore middleware functionality in depth
-5. Add API documentation with Swagger
-6. Implement comprehensive data validation with Malli
-
-Each notebook builds upon the concepts from the previous ones, providing a comprehensive introduction to Clojure web development.
+## 使用指南
+- 启动 Clerk 浏览全部笔记：`clojure -M:clerk`（默认 http://localhost:7777）
+- 直接运行主程序示例：`clojure -X:run-x` 或 `clojure -M:run-m`
+- 测试/构建：`clojure -T:build test`，CI/uberjar：`clojure -T:build ci`
 
 ## License
 
