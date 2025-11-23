@@ -1,0 +1,128 @@
+#+title: PLC 梯形图仿真与可视化设计(Clojure 方案)
+#+subtitle: 面向教学与仿真, 复刻 ladderlib 语义, 使用 core.async + Clerk, 程序以 EDN 表示
+
+* 目标与适用场景
+- 教学, 仿真, 可视化为主, 不追求硬实时.
+- 保持与 ladderlib 相同的指令语义(边沿, 计时, 回滚), 方便对照 C 版.
+- 使用 Clojure 纯函数实现指令, core.async 调度, Clerk 做 SVG 可视化.
+- 程序与上下文用 EDN 表达, 不再使用 JSON.
+
+* PLC 与梯形图速览(专业要点)
+- 扫描周期: 固定节拍循环 "读输入 -> 执行程序 -> 写输出", 一次循环为一次 scan.
+- 梯形图组成: 触点(条件)+ 线圈(动作); 边沿触点用上一周期值判断.
+- 记忆与时序: 计时器依赖时间基准, 计数器依赖边沿; Tr/Td/Cr/Cd 等状态位.
+- 运行状态: 运行, 暂停, 错误, 退出; 错误时需回滚输出避免错误信号.
+- I/O 与寄存器: I/Q(数字), IW/QW(模拟), M/D/R(内部寄存器), C/T(计数器, 计时器).
+
+* 程序数据结构(EDN)
+#+begin_src clojure
+{:meta {:name "demo" :desc "教学示例"}
+ :networks
+ [{:id 0
+   :rows 4 :cols 8
+   :cells [[{:code :NO    :data [{:type :I  :value 0}] :bar? false :state false}
+            {:code :CONN  :data []                    :bar? false :state false}
+            {:code :COIL  :data [{:type :Q  :value 0}] :bar? false :state false}
+            ... 4~7 NOP ...]
+           [... row 1 ...]
+           [... row 2 ...]
+           [... row 3 ...]]}]}
+#+end_src
+- ~code~ 为指令枚举, 沿用 ladderlib 名称(:NO/:NC/:RE/:FE/:COIL/:COILL/:COILU/:TON/:TOF/:TP/:CTU/:CTD/:MOVE/:ADD/...).
+- ~data~ 为指令参数序列, 元素含 ~:type~ (寄存器/常数/时间基准)与 ~:value~.
+- ~bar?~ 表示垂直线; ~state~ 为当前输出态(执行时更新).
+- I/O 与寄存器含义:
+  - ~I/Q~: 数字量输入/输出位(布尔).
+  - ~IW/QW~: 模拟量输入/输出字(整型, 常用来表示 0–4095 等模拟范围).
+  - ~M~: 内部辅助位(布尔); ~D~: 内部整型寄存器; ~R~: 内部浮点寄存器.
+  - ~C~: 计数器寄存器(配合 Cr/Cd 状态); ~T~: 计时器索引(配合 Tr/Td/acc 状态).
+
+* 运行上下文(EDN)
+#+begin_src clojure
+  {:memory {:M [] :Cr [] :Cd [] :Tr [] :Td []}
+   :prev   {:M [] :Cr [] :Cd [] :Tr [] :Td []}
+   :regs   {:C [] :D [] :R []}
+   :timers [{:ts 0 :acc 0 :base :ms} ...]
+   :io     {:I [] :IW [] :Q [] :QW []}
+   :state  {:mode :paused :err nil}
+   :options {:scan-ms 50 :write-on-fault? false}}
+#+end_src
+- ~prev~ 保存上一周期值, 用于 RE/FE 与回滚.
+- ~timers~ 储存时间戳与累加值, ~:base~ 使用 ladderlib 基准(:ms/:10ms/:100ms/:sec/:min).
+- 状态位说明:
+  - ~Tr~ (Timer running): 计时器正在计时.
+  - ~Td~ (Timer done): 计时器达到设定值, 计时完成.
+  - ~Cr~ (Counter running): 计数器正在计数.
+  - ~Cd~ (Counter done): 计数器达到目标(CTU 达预置或 CTD 计到 0).
+
+* 网络中的可能组件与作用
+- 基础与连接: ~NOP~ 占位; ~CONN~ 水平连线; ~NEG~ 取反触点.
+- 触点(条件): ~NO~ 常开; ~NC~ 常闭; ~RE~ 上升沿; ~FE~ 下降沿.
+- 线圈(动作): ~COIL~ 直接写目标位; ~COILL~ 自保持; ~COILU~ 解保持.
+- 计时器: ~TON~ 通电延时; ~TOF~ 断电延时; ~TP~ 脉冲. 参数含计时器索引, 设定值, 基准.
+- 计数器: ~CTU~ 向上计数; ~CTD~ 向下计数; 状态位 Cr/Cd 表示运行/完成.
+- 数据搬运: ~MOVE~ 复制数据; ~TMOVE~ 表搬运预留.
+- 算术: ~ADD~ ~SUB~ ~MUL~ ~DIV~ ~MOD~, 左侧导通时计算并写目标.
+- 位移/旋转: ~SHL~ ~SHR~ ~ROL~ ~ROR~.
+- 位逻辑: ~AND~ ~OR~ ~XOR~ ~NOT~.
+- 比较: ~EQ~ ~NE~ ~GT~ ~GE~ ~LT~ ~LE~, 结果为布尔.
+- 扩展: ~FOREIGN~ 外部指令入口(需注册); ~MULTI~ 多单元占位; ~bar?~ 垂直母线连接上下行.
+
+* 扫描调度(core.async)
+- 通道:
+  - ~cmd-ch~: 接收 ~{:op :start|:stop|:load|:tick|:set-program ...}~.
+  - ~state-ch~ (sliding 2): 每次 scan 产生 snapshot 给可视化/WS.
+  - ~event-ch~ (可选): 错误/告警.
+- 循环(~go-loop~ + ~timeout~):
+  1. ~(alts! [cmd-ch (timeout scan-ms)])~
+  2. 处理 ~:start/:stop/:load/:tick~ 等指令, 更新 ~ctx.state~ 或重载程序.
+  3. timeout 且 ~mode=:running~ 时执行 ~scan-step!~:
+     - 备份 prev -> memory/regs/Q/QW
+     - 逐网/列/行执行指令(纯函数, 遵循 ladderlib)
+     - 计时器用 ~(now-ms)~ 与基准换算; 边沿用 ~prev~
+     - 出错则回滚并设 ~mode=:error~
+     - 产生 snapshot -> ~state-ch~
+- I/O 钩子: scan 前读 ~:I/:IW~, scan 后将 ~:Q/:QW~ 分发给订阅方.
+
+* 指令语义对齐要点
+- 触点: NO/NC 直接与左侧 state 相与; RE/FE 依赖 ~prev~ 做边沿.
+- 线圈: COIL 直接写目标; COILL/COILU 置位/复位自保持.
+- 计时器: TON/TOF/TP 用 ~:ts/:acc~ 判定完成, Tr/Td 与 C 版一致.
+- 计数器: CTU/CTD 用边沿触发, 更新 Cr/Cd 与计数值.
+- 算术/位运算/比较: 保持数据类型兼容(整数/浮点/常数 K).
+- FOREIGN: 预留表, 将自定义函数注册到指令表.
+
+* EDN 示例(帶計時器與計數器)
+#+begin_src clojure
+{:meta {:name "ton-ctu-demo"}
+ :networks
+ [{:id 0 :rows 3 :cols 6
+   :cells [[{:code :NO   :data [{:type :I :value 0}] :bar? false :state false}
+            {:code :TON  :data [{:type :T :value 0} {:type :K :value 3} {:type :BASE :value :sec}]
+             :bar? false :state false}
+            {:code :COIL :data [{:type :Q :value 0}] :bar? false :state false}
+            ...]
+           [{:code :RE   :data [{:type :Q :value 0}] :bar? false :state false}
+            {:code :CTU  :data [{:type :C :value 0} {:type :K :value 5}] :bar? false :state false}
+            {:code :COIL :data [{:type :M :value 0}] :bar? false :state false}
+            ...]
+           [... row 2 NOP ...]]}]}
+#+end_src
+- 行 0: I0 为真时触发 T0 计时 3 秒, 完成后置 Q0.
+- 行 1: Q0 上升沿触发计数器 C0, 计满 5 次后置 M0.
+
+* 错误处理与回滚
+- 执行错误(非法指令/参数越界/空数据):
+  - 立即回滚内存/寄存器/Q/QW 到 ~prev~
+  - 设置 ~{:mode :error :err {:code ... :msg ...}}~
+  - 可选清零输出(对齐 ladderlib 的 ~write_on_fault~ 行为)
+- 监控: ~event-ch~ 推送错误; Clerk 显示当前错误与最近快照.
+
+* 可视化与前端联动
+- Clerk: SVG 渲染网格, ~state=true~ 高亮; ~clerk/table~ 展示寄存器/计时器/计数器; 按钮包装 ~put! cmd-ch~.
+- 前端 HTML 编辑器: 可改为输出/导入 EDN, 后端验证后 ~:load~ 入调度器; ~state-ch~ 可通过 WS 推送高亮状态.
+
+* 实施建议
+1. 在 ~src/ladder/sim.clj~ 实现数据结构, 指令表, ~scan-step!~, ~start-scheduler!~ (先覆盖 NO/NC/RE/FE/COIL/COILL/COILU/TON/TOF/TP/CTU/CTD/MOVE/算术/比较).
+2. 在 ~notebooks/plc/~ 增加 Clerk 笔记, 载入 EDN 示例, 启动调度器, 渲染 SVG, 提供 start/stop/load 控制.
+3. 若需与 HTML 编辑器联动, 增加 Reitit 路由或 WS: ~POST /api/load~ 接受 EDN, ~GET/WS /api/state~ 推送 ~state-ch~.
