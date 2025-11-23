@@ -68,6 +68,12 @@
 - 比较: ~EQ~ ~NE~ ~GT~ ~GE~ ~LT~ ~LE~, 结果为布尔.
 - 扩展: ~FOREIGN~ 外部指令入口(需注册); ~MULTI~ 多单元占位; ~bar?~ 垂直母线连接上下行.
 
+组件清单与占用高度(行数)
+- 单格高(1 行): NOP, CONN, NEG, NO, NC, RE, FE, COIL, COILL, COILU, MOVE, ADD, MUL, MOD, SHL, SHR, ROL, ROR, AND, OR, XOR, NOT, EQ, GT, GE, LT, LE, NE, FOREIGN, INV.
+- 双格高(2 行): TON, TOF, TP, CTU, CTD, DIV.
+- 三格高(3 行): SUB.
+- TMOVE: 预留表搬运, 可按实现选择单格或多格。
+
 * 扫描调度(core.async)
 - 通道:
   - ~cmd-ch~: 接收 ~{:op :start|:stop|:load|:tick|:set-program ...}~.
