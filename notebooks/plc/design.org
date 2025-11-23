@@ -92,7 +92,35 @@
 - 算术/位运算/比较: 保持数据类型兼容(整数/浮点/常数 K).
 - FOREIGN: 预留表, 将自定义函数注册到指令表.
 
-* EDN 示例(帶計時器與計數器)
+* 简单示例的执行过程(逐扫说明)
+示例网络(单网络, 1 行 3 列):
+#+begin_src clojure
+  {:id 0 :rows 1 :cols 3
+   :cells [[{:code :NO   :data [{:type :I :value 0}] :bar? false :state false}
+            {:code :TON  :data [{:type :T :value 0} {:type :K :value 3} {:type :BASE :value :sec}]
+             :bar? false :state false}
+            {:code :COIL :data [{:type :Q :value 0}] :bar? false :state false}]]}
+#+end_src
+语义: 当 I0 持续为真 3 秒后, 置位 Q0.
+
+扫描周期假设为 1 秒, 状态演进:
+- Scan0: I0=false. NO 输出=false, TON 不计时, Q0 维持 false.
+- Scan1: I0=true. NO 输出=true, TON 启动, Tr=true, acc≈1s, Td=false, Q0 仍 false.
+- Scan2: I0=true. TON 继续计时, acc≈2s, Tr=true, Td=false, Q0 仍 false.
+- Scan3: I0=true. acc≈3s 达设定, TON 置 Td=true, Tr=false, 左侧为 true → COIL 置 Q0=true.
+- Scan4+: I0 持续真, TON 已完成保持 Td=true, Q0 持续为真; 若 I0 变 false, TON 清零, Td 复位, Q0 当次变为 false.
+可视化: 第 3 次扫描后, TON 与 COIL 单元 ~state~ 会高亮(true), Q0 输出为真.
+
+示意图 (字符图, 对应上例 NO→TON→COIL):
+#+begin_example
+|——[ I0 NO ]——[ TON T0 3s ]——( Q0 )——|
+#+end_example
+- `[ I0 NO ]`: 常开触点, I0 为真导通.
+- `[ TON T0 3s ]`: 通电延时计时器, 编号 T0, 设定 3 秒.
+- `( Q0 )`: 输出线圈, T0 完成后置位 Q0.
+- 竖线 `|` 为母线, 横线 `——` 为导通路径.
+
+* EDN 示例(带计时器和计数器)
 #+begin_src clojure
 {:meta {:name "ton-ctu-demo"}
  :networks
