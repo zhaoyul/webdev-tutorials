@@ -1,0 +1,1550 @@
+* 构建一个编码 Agent: 第 1 部分 - 一个基本的 LLM 聊天循环
+
+我正在学习 Clojure, 想找个小项目来实践. 鉴于 AI Agent 的热潮, 我偶然看到了 Thorsten Ball 的一篇关于构建代码编辑 Agent 的精彩文章.
+
+他利用 Go 语言和一个 Anthropic 模型端点, 展示了构建一个代码编辑 Agent 是多么容易. 你可以在 [[https://thorstenball.com/blog/2024/04/30/build-an-agent-or-the-emperor-has-no-clothes/][How to Build an Agent or: The Emperor Has No Clothes]] 阅读全文.
+
+我决定尝试用 Clojure 和一个 OpenAI 模型 (gpt-5-mini) 来复现同样的过程.
+
+** 聊天补全 (chat completions) 是如何工作的?
+
+在我们开始实现代码编辑 Agent 之前, 让我们花点时间了解一下基于 LLM 的聊天工作流程是如何运作的. LLM 是一个下一词 (token) 预测引擎, 它依赖于之前的 token 来预测下一个词.
+
+因此, 为了让基于聊天的体验能够正常工作, 它实际上需要整个对话历史来生成下一个响应. 这是因为它本身是无状态的, 对话的所有状态都存在于历史记录中. 维护对话历史的是与 LLM 对话的客户端.
+
+*** LLM 补全
+
+对话历史中的每条消息都带有一个角色属性 - ~user~ 或 ~assistant~.
+
+** OpenAI API 客户端
+
+为了与 OpenAI 模型对话, 我们将使用 ~openai-clojure~ 库. 将它添加到你的 ~deps.edn~ 文件中:
+
+#+BEGIN_SRC clojure
+{:deps {org.clojure/clojure {:mvn/version "1.12.0"}
+        net.clojars.wkok/openai-clojure {:mvn/version "0.23.0"}}
+ :paths ["src" "test"]}
+#+END_SRC
+
+该库同时支持 OpenAI 和 Azure 托管的 OpenAI 模型. chat-completion API 接受一个可以传入的 ~model~ 参数.
+
+#+BEGIN_SRC clojure
+(openai/create-chat-completion {:model (:model config)
+                                :messages messages}
+                               (select-keys config
+                                [:api-key :api-endpoint :impl]))
+#+END_SRC
+
+~api-keys~ 和 ~api-endpoint~ 参数需要指向你的模型实例. ~:model~ 参数是我们正在使用的模型. 在我的例子中是 ~gpt-5-mini~ 模型. ~:messages~ 参数包含对话历史. 历史中的最后一条消息通常是用户消息.
+
+** 循环的代码
+
+现在我们知道如何调用 API 了. 让我们看看 Agent 的主循环. 目前它只能通过文本回应, 功能不多, 但仍然可以像任何 LLM 聊天界面一样用来提问.
+
+#+BEGIN_SRC clojure
+(defn -main
+  []
+  (let [config (read-config)]
+    (loop [user-message (get-user-message)
+           messages []]
+      (when (some? user-message)
+        (let [new-messages (add-message-to-history messages user-message :user)
+              response (-> new-messages
+                           (call-llm-api config)
+                           extract-first-response)
+              history (add-message-to-history new-messages (:content response) :assistant)]
+          (print-llm-response response)
+          (recur (get-user-message) history))))))
+#+END_SRC
+
+让 LLM 响应你的消息所需要的就这么多. 就是这个小小的 12 行函数. 我们在 ~get-user-message~ 函数中读取用户输入. 将其附加到历史记录中, 并使用 ~call-llm-api~ 调用来调用聊天补全 API.
+
+一旦我们得到响应, 我们就将响应添加到历史记录中并打印出来给用户看. 我们重新开始整个循环来收集下一个用户输入.
+
+以下是完整的代码清单. 为了忽略来自 LLM 的多个响应, 代码做了一些简化.
+
+#+BEGIN_SRC clojure
+(ns agent.core
+  (:require
+   [clojure.edn :as edn]
+   [wkok.openai-clojure.api :as openai]))
+
+(defn get-user-message
+  []
+  (print "User => ")
+  (flush)
+  (let [message (read-line)]
+    (when-not (= message "quit")
+      message)))
+
+(defn print-llm-response
+  [message]
+  (println "LLM =>" (:content message)))
+
+(defn call-llm-api
+  "Call the chat completion API"
+  [messages config]
+  (openai/create-chat-completion {:model (:model config)
+                                  :messages messages}
+                                 (select-keys config [:api-key :api-endpoint :impl])))
+
+(defn extract-first-response
+  "The LLM call can return multiple responses. Extract the first one and use it"
+  [response]
+  (let [choices (:choices response)
+        responses (map #(get-in % [:message]) choices)]
+    (when-not (= 1 (count responses))
+      (println "Expected exactly one response" {:responses responses}))
+    (first responses)))
+
+(defn add-message-to-history
+  "Adds a message with the specified role to the message history."
+  [messages message role]
+  (conj messages {:role role :content message}))
+
+(defn read-config
+  []
+  (edn/read-string (slurp "llm.edn")))
+
+(defn -main
+  []
+  (let [config (read-config)]
+    (loop [user-message (get-user-message)
+           messages []]
+      (when (some? user-message)
+        (let [new-messages (add-message-to-history messages user-message "user")
+              response (-> (call-llm-api new-messages config)
+                           extract-first-response)
+              history (add-message-to-history new-messages (:content response) "assistant")]
+          (print-llm-response response)
+          (recur (get-user-message) history))))))
+#+END_SRC
+
+~llm.edn~ 配置文件的格式如下:
+
+#+BEGIN_SRC clojure
+{:api-key "REPLACE-YOUR-KEY"
+ :api-endpoint "https://<ENDPOINT>.openai.azure.com"
+ :impl :azure
+ :model "gpt-5-mini"}
+#+END_SRC
+
+你也可以将 API 密钥导出为环境变量供程序读取. 查看 ~openai-clojure~ 的文档以获取更多细节.
+
+** 循环演示
+
+这是一个示例运行, 询问巴黎的天气. 如你所见, LLM 声称无法访问实时天气数据, 但是模型提供商通过某种系统提示已经为模型提供了当前日期的信息. 所以, 它能预测十月份的天气会是怎样. 在下一篇文章中, 我们将探讨如何添加一个天气工具, 模型可以调用这个工具来获取特定地点的天气.
+
+#+BEGIN_EXAMPLE
+ LLM => Howdy! How can I help you today?
+
+ User => How is the weather in Paris today?
+
+ LLM => I don' t have access to live weather data, so I can' t tell you the exact conditions in Paris right now. I can, however:
+
+ * Give a typical late‑October picture (expect cool, often cloudy, with a good chance of rain; daytime highs commonly around 10–15 °C / 50–59 °F
+ and nights near 5–9 °C / 41–48 °F), or
+ * Walk you through quick ways to get the current weather (Google " weather Paris" , check MeteoFrance, Weather.com, or OpenWeatherMap, or
+ ask your phone assistant), or
+ * If you paste a current weather webpage or let me know a specific source, I can help interpret it.
+
+ Which would you like? (Also: Celsius or Fahrenheit?)
+
+ User => quit
+#+END_EXAMPLE
+
+
+* 构建一个编码 Agent: 第 2 部分 - 为 Agent 添加工具
+
+在上一篇文章中, 我们看了一个用户可以与之聊天的简单 LLM 循环. 然而, LLM 没有任何方法来获取外部信息. 比如当我们问它巴黎的天气时, 它会根据它知道的日期给出一个大致的天气情况. 然而, 它无法给出任何精确的信息. 在这篇文章中, 让我们通过提供一个 ~get_current_weather~ 工具来解决这个问题.
+
+** OpenAI 工具文档
+
+在上一篇文章中, 我们已经看到了 LLM 如何响应以及用户消息在历史记录中是如何被标记的. 为了让 LLM 能够感知到工具, 这些工具需要连同一些描述其用途的元数据一起传递给 completions API.
+
+对于 ~get_current_weather~ 工具, 这是 OpenAI 规定的元数据格式.
+
+#+BEGIN_SRC json
+{
+    "type": "function",
+    "name": "get_current_weather",
+    "description": "Retrieves current weather for the given location.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "location": {
+                "type": "string",
+                "description": "City and country e.g. Bogotá, Colombia"
+            },
+            "units": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "description": "Units the temperature will be returned in."
+            }
+        },
+        "required": ["location", "unit"],
+        "additionalProperties": false
+    },
+    "strict": true
+}
+#+END_SRC
+
+我们需要给它一个描述, 一个名称, 以及它期望的参数, 格式为一个 JSON 对象.
+
+** 工具如何运作?
+
+现在 LLM 有了一个可用的获取天气的工具, 让我们看看它是如何被调用的. 每当 LLM 需要执行工具时, 它会生成一个特殊格式的消息
+
+#+BEGIN_SRC json
+{
+    "id": "fc_67890abc",
+    "call_id": "call_67890abc",
+    "type": "function_call",
+    "name": "get_current_weather",
+    "arguments": "{\"location\":\"Bogotá, Colombia\"}"
+}
+#+END_SRC
+
+可能会有多个这样的工具调用. 每个调用都由一个唯一的 ~call_id~ 标识. 我们可以处理每个工具调用, 并通过如下所示的特殊消息返回输出. ~call_id~ 用于将工具调用的输出与相应的 LLM 工具调用请求匹配起来.
+
+#+BEGIN_SRC json
+{
+  "type": "function_call_output",
+  "call_id": "call_67890abc",
+  "content": "-26 C",
+  "role": "tool"
+}
+#+END_SRC
+
+注意这里的角色是 ~tool~, 而不是 ~user~ 或 ~assistant~.
+
+** 处理天气查询
+
+现在有了以上信息, 我们可以将我们的 LLM 调用更改为以下形式.
+
+#+BEGIN_SRC clojure
+(openai/create-chat-completion {:model (:model config)
+                                    :messages messages
+                                    :tools
+                                     [{:type     "function"
+                                       :function {:name        "get_current_weather"
+                                                  :description "Get the current weather in a given location"
+                                                  :parameters
+                                                  {:type       "object"
+                                                   :properties {:location {:type        "string"
+                                                                           :description "The city and state, e.g. San Francisco, CA"}
+                                                                :unit     {:type "string"
+                                                                           :enum ["celsius" "fahrenheit"]}}}}}]
+                                     :tool_choice "auto"}
+                                   (select-keys config [:api-key :api-endpoint :impl]))
+#+END_SRC
+
+目前, 我们将硬编码元数据和工具调用的处理逻辑.
+
+#+BEGIN_SRC clojure
+(defn- handle-tool-call
+  [response]
+  (let [tool-calls (:tool_calls response)]
+    (mapv (fn [tc]
+            {:type "function_call_output"
+             :tool_call_id (:id tc)
+             :content "-26 C"
+             :role "tool"}) tool-calls))
+  )
+#+END_SRC
+
+并且我们修改主循环来处理工具调用.
+
+#+BEGIN_SRC clojure
+(let [assistant-response (-> messages
+                               (call-llm-api config tools)
+                               extract-first-response)
+        tool-messages (handle-tool-call assistant-response)
+        new-messages (add-message-to-history messages assistant-response)]
+    (if (seq tool-messages)
+      (let [tool-message-history (reduce add-message-to-history new-messages tool-messages)]
+        (recur tool-message-history config tools))
+      new-messages)))
+#+END_SRC
+
+最终的代码如下:
+
+#+BEGIN_SRC clojure
+(ns agent.core
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [wkok.openai-clojure.api :as openai]))
+
+(defn- read-user-input!
+  []
+  (print "\u001b[94mYou\u001b[0m: ")
+  (flush)
+  (let [message (str/trim (read-line))]
+    (when-not (or (str/blank? message) (= message "quit"))
+      {:role "user" :content message})))
+
+(defn- display-assistant-response!
+  [content]
+  (println "\u001b[93mLLM\u001b[0m:" content))
+
+(defn- call-llm-api
+  "Call the chat completion API"
+  [messages config]
+  (try
+    (openai/create-chat-completion {:model (:model config)
+                                    :messages messages
+                                    :tools
+                                    [{:type     "function"
+                                      :function {:name        "get_current_weather"
+                                                 :description "Get the current weather in a given location"
+                                                 :parameters
+                                                 {:type       "object"
+                                                  :properties {:location {:type        "string"
+                                                                          :description "The city and state, e.g. San Francisco, CA"}
+                                                               :unit     {:type "string"
+                                                                          :enum ["celsius" "fahrenheit"]}}}}}]
+                                    :tool_choice "auto"}
+                                   (select-keys config [:api-key :api-endpoint :impl]))
+    (catch Exception e
+      (throw (ex-info "LLM API call failed" {:cause (.getMessage e)
+                                             :messages messages}
+                      e)))))
+
+(defn- extract-first-response
+  "The LLM call can return multiple responses. Extract the first one and throw an exception if there are more than one responses"
+  [response]
+  (let [choices (:choices response)
+        responses (mapv :message choices)]
+    (pprint/pprint responses)
+    (when-not (= 1 (count responses))
+      (throw (ex-info "Expected exactly one response" {:responses responses})))
+    (first responses)))
+
+(defn- add-message-to-history
+  "Adds a message to the message history."
+  ([history message]
+   (conj (or history []) message)))
+
+(defn- handle-tool-call
+  [response]
+  (let [tool-calls (:tool_calls response)]
+    (mapv (fn [tc]
+            {:type "function_call_output"
+             :tool_call_id (:id tc)
+             :content "-26 C"
+             :role "tool"}) tool-calls)))
+
+(defn- read-config!
+  []
+  (with-open [r (io/reader "llm.edn")]
+    (edn/read {:eof nil} (java.io.PushbackReader. r))))
+
+(defn- get-assistant-response
+  "Recursively gets assistant responses handling tool calls as needed"
+  [messages config]
+  (let [assistant-response (-> messages
+                               (call-llm-api config)
+                               extract-first-response)
+        tool-messages (handle-tool-call assistant-response)
+        new-messages (add-message-to-history messages assistant-response)]
+    (if (seq tool-messages)
+      (let [tool-message-history (reduce add-message-to-history new-messages tool-messages)]
+        (recur tool-message-history config))
+      new-messages)))
+
+(defn -main
+  []
+  (let [config (read-config!)]
+    (loop [user-message (read-user-input!)
+           messages []]
+      (when (some? user-message)
+        (let [new-messages (add-message-to-history messages user-message)
+              messages-including-response (get-assistant-response new-messages config)
+              assistant-message (:content (last messages-including-response))]
+          (display-assistant-response! assistant-message)
+          (recur (read-user-input!) messages-including-response))))))
+#+END_SRC
+
+** 演示
+
+#+BEGIN_EXAMPLE
+ You: Howdy, can you tell how the weather in Paris is like?
+
+ LLM: Howdy - right now it's showing -26 °C in Paris (France), which is about -14.8 °F. That' s extremely cold and unusual for Paris - would you
+ like me to:
+
+ * confirm you meant Paris, France (not another Paris),
+ * get a short-term forecast or current conditions (wind, precipitation), or
+ * convert to a different unit?
+
+ You: quit
+#+END_EXAMPLE
+
+如你所见, 对于任何查询, 该工具都返回一个固定的 "-26 C". LLM 接受了工具的输出, 并评论说这个温度在巴黎是多么不寻常. 如果你问它另一个城市的天气, 它返回相同的输出, 模型会断定 ~get_current_weather~ 工具有问题, 并要求你仔细检查.
+
+这篇文章就到这里. 在下一篇中, 让我们看看如何移除 LLM 工具描述中的所有硬编码, 并利用 Clojure 的一些元数据函数来生成它们.
+
+
+* 构建一个编码 Agent: 第 3 部分 - 自动发现工具
+
+在上一篇文章中, 我们研究了如何为 LLM 提供一个获取天气的工具. 为了简化文章, 我们使用了硬编码的方式直接提供给 LLM. 在这篇文章中, 让我们看看如何使用 Clojure 的元数据属性来发现工具.
+
+** 如何使用 Clojure 元数据发现工具
+
+Clojure 允许为所有符号 (symbol) 附加一个元数据 map. 这使得我们可以对代码和数据进行任意的注解. 我们可以通过以下方式查询附加到任何符号的元数据:
+
+#+BEGIN_SRC clojure
+(pprint (meta #'+))
+;; {:added "1.2",
+;;  :ns #object[clojure.lang.Namespace 0x109f5dd8 "clojure.core"],
+;;  :name +,
+;;  :file "clojure/core.clj",
+;;  :inline-arities
+;;  #object[clojure.core$_GT_1_QMARK_ 0x47dd778 "clojure.core$_GT_1_QMARK_@47dd778"],
+;;  :column 1,
+;;  :line 986,
+;;  :arglists ([] [x] [x y] [x y & more]),
+;;  :doc
+;;  "Returns the sum of nums. (+) returns 0. Does not auto-promote\n  longs, will throw on overflow. See also: +'",
+;;  :inline
+;;  #object[clojure.core$nary_inline$fn__5625 0x7de4a01f "clojure.core$nary_inline$fn__5625@7de4a01f"]}
+#+END_SRC
+
+注意 Clojure 使用的标准 ~:doc~, ~:name~ 属性. 我们可以为提供给 LLM 的所有工具添加自定义元数据. 将元数据与函数放在一起, 可以更容易地保持文档和实现同步.
+
+对于 ~get-current-weather~ 函数, 我们将添加以下元数据:
+
+#+BEGIN_SRC clojure
+(defn
+  ^{:tool {:name "get_current_weather"
+           :description "Retrieves the current weather information for a specified location"
+           :parameters {:type "object"
+                        :properties {:location {:type "string"
+                                                :description "The city and state/country for which to get weather information"}
+                                     :unit {:type "string"
+                                            :enum ["celsius" "fahrenheit" "kelvin"]
+                                            :description "Temperature unit for the response"
+                                            :default "celsius"}}
+                        :required ["location"]}}}
+  get-current-weather
+  [location]
+  "-25.0 C")
+#+END_SRC
+
+为了简单起见, 我们仍然将 API 所需的整个元数据保留为一个单一对象, 这样我们可以直接传递它. 我们将工具传递给 ~call-llm-api~ 函数, 以便将其包含在 API 调用中.
+
+我们还需要一个函数来动态发现编写的工具. 这个函数可以写成下面这样:
+
+#+BEGIN_SRC clojure
+(defn- get-tool-list
+  "Discovers all functions in provided namespace ns with :tool metadata"
+  [ns]
+  (->> (ns-publics ns)
+       vals
+       (filter #(:tool (meta %)))
+       (mapv #(hash-map :type "function" :function (:tool (meta %))))))
+#+END_SRC
+
+这个函数检查传入的命名空间中所有公共符号, 并将列表筛选为所有附加了 ~:tool~ 元数据的符号. 它使用这些元数据创建要传递给 LLM 补全调用的列表.
+
+我们还需要一个注册表 (registry), 以便在从 LLM 找到匹配的工具调用时调用该工具. 这可以通过创建工具名称到函数符号的映射来实现, 如下所示:
+
+#+BEGIN_SRC clojure
+(defn build-tool-registry
+  "Builds a map of tool names to their corresponding functions"
+  [ns]
+  (->> (ns-publics ns)
+       vals
+       (filter #(:tool (meta %)))
+       (reduce (fn [acc f]
+                 (assoc acc (get-in (meta f) [:tool :name]) f))
+               {})))
+#+END_SRC
+
+** 连接工具执行
+
+现在我们有了这两个函数, 我们可以改变 ~handle-tool-call~ 来利用它们.
+
+#+BEGIN_SRC clojure
+(defn handle-tool-call
+  [response tools]
+  (let [tool-calls (:tool_calls response)]
+    (mapv (fn [tc]
+            {:tool_call_id (:id tc)
+             :content (invoke-tool tools tc)
+             :role "tool"}) tool-calls)))
+#+END_SRC
+
+我们还将引入一个 ~invoke-tool~ 函数来更好地处理调用的参数.
+
+#+BEGIN_SRC clojure
+(defn- invoke-tool [tools tc]
+  (let [name (get-in tc [:function :name])
+        fn (get tools name)]
+    (println "\u001b[92mtool\u001b[0m:" name)
+    (if (some? fn)
+      (fn (parse-json-arguments (get-in tc [:function :arguments])))
+      (str "Error calling " name))))
+#+END_SRC
+
+完整的代码如下:
+
+#+BEGIN_SRC clojure
+(ns agent.core
+  (:require
+   [cheshire.core :as json]
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [wkok.openai-clojure.api :as openai]
+   [agent.tools]))
+
+(defn- read-user-input!
+  []
+  (print "\u001b[94mYou\u001b[0m: ")
+  (flush)
+  (let [message (str/trim (read-line))]
+    (when-not (or (str/blank? message) (= message "quit"))
+      {:role "user" :content message})))
+
+(defn- display-assistant-response!
+  [content]
+  (println "\u001b[93mLLM\u001b[0m:" content))
+
+(defn- call-llm-api
+  "Call the chat completion API"
+  [messages config tools]
+  (try
+    (openai/create-chat-completion {:model (:model config)
+                                    :messages messages
+                                    :tools tools
+                                    :tool_choice "auto"}
+                                   (select-keys config [:api-key :api-endpoint :impl]))
+    (catch Exception e
+      (throw (ex-info "LLM API call failed" {:cause (.getMessage e)
+                                             :messages messages}
+                      e)))))
+
+(defn- extract-first-response
+  "The LLM call can return multiple responses. Extract the first one and print a warning if there are more than one responses"
+  [response]
+  (let [choices (:choices response)
+        responses (mapv :message choices)]
+    (when-not (= 1 (count responses))
+      (pprint/pprint {:warning "Multiple responses received" :responses responses}))
+    (first responses)))
+
+(defn- add-message-to-history
+  "Adds a message to the message history."
+  ([history message]
+   (conj history message)))
+
+(defn- parse-json-arguments
+  [args]
+  (json/parse-string args true))
+
+(defn- invoke-tool [tools tc]
+  (let [name (get-in tc [:function :name])
+        fn (get tools name)]
+    (println "\u001b[92mtool\u001b[0m:" name)
+    (if (some? fn)
+      (fn (parse-json-arguments (get-in tc [:function :arguments])))
+      (str "Error calling " name))))
+
+(defn handle-tool-call
+  [response tools]
+  (let [tool-calls (:tool_calls response)]
+    (mapv (fn [tc]
+            {:tool_call_id (:id tc)
+             :content (invoke-tool tools tc)
+             :role "tool"}) tool-calls)))
+
+(defn- read-config!
+  []
+  (with-open [r (io/reader "llm.edn")]
+    (edn/read {:eof nil} (java.io.PushbackReader. r))))
+
+(defn- get-tool-list
+  "Discovers all functions in provided namespace ns with :tool metadata"
+  [ns]
+  (->> (ns-publics ns)
+       vals
+       (filter #(:tool (meta %)))
+       (mapv #(hash-map :type "function" :function (:tool (meta %))))))
+
+(defn build-tool-registry
+  "Builds a map of tool names to their corresponding functions"
+  [ns]
+  (->> (ns-publics ns)
+       vals
+       (filter #(:tool (meta %)))
+       (reduce (fn [acc f]
+                 (assoc acc (get-in (meta f) [:tool :name]) f))
+               {})))
+
+(defn- get-assistant-response
+  [messages config tools tools-registry]
+  (let [assistant-response (-> messages
+                               (call-llm-api config tools)
+                               extract-first-response)
+        tool-messages (handle-tool-call assistant-response tools-registry)
+        new-messages (add-message-to-history messages assistant-response)]
+    (if (seq tool-messages)
+      (let [tool-message-history (reduce add-message-to-history new-messages tool-messages)]
+        (recur tool-message-history config tools tools-registry))
+      new-messages)))
+
+(defn -main
+  []
+  (let [config (read-config!)
+        tools (get-tool-list 'agent.tools)
+        tools-registry (build-tool-registry 'agent.tools)]
+    (loop [user-message (read-user-input!)
+           messages []]
+      (when (some? user-message)
+        (let [new-messages (add-message-to-history messages user-message)
+              messages-including-response (get-assistant-response new-messages config tools tools-registry)
+              assistant-message (:content (last messages-including-response))]
+          (display-assistant-response! assistant-message)
+          (recur (read-user-input!) messages-including-response))))))
+#+END_SRC
+
+我们已将工具移至一个独立的命名空间 ~agent.tools~ 以便更好地管理代码.
+
+** 演示
+
+#+BEGIN_EXAMPLE
+ You: How is the weather in San Jose?
+
+ LLM: Which San Jose do you mean - San Jose, California (USA) or San José, Costa Rica (or another San Jose)? Also which temperature unit
+ do you prefer: Celsius or Fahrenheit?
+
+ You: California
+
+ LLM: Got it - San Jose, California. Which temperature unit would you like: Celsius or Fahrenheit? If you don' t have a preference I' ll use
+ Fahrenheit.
+
+ You: Celsius
+
+ tool: get_current_weather
+
+ Fetching weather for San Jose, California, USA in celsius
+
+ tool: get_current_weather
+
+ Fetching weather for San Jose, California, USA in celsius
+
+ tool: get_current_weather
+
+ Fetching weather for San Jose, California, USA in fahrenheit
+
+ LLM: Sorry - the weather service returned -25.0 °C for San Jose, CA, which is almost certainly an error. I can:
+
+ * Try fetching the current weather again now (Celsius or Fahrenheit), or
+ * Give typical/average conditions for San Jose in late October, or
+ * Help with a forecast or radar from another source.
+
+ Which would you like me to do?
+
+ You: quit
+#+END_EXAMPLE
+
+Agent 的工作方式和以前一样. 注意, LLM 多次调用了工具, 因为它不敢相信得到的温度值 :D.
+
+这篇文章就到这里. 在下一篇文章中, 让我们看看构建一个代码编辑 Agent 是多么容易.
+
+* 构建一个编码 Agent: 第 4 部分 - 一个基本可用的编码 Agent
+
+我们将利用这篇文章来了解构建一个编码 Agent 是多么容易. 你会发现构建一个编码 Agent 并不需要太多东西, 所有的魔力都在 LLM 中.
+
+这会让你质疑, 为什么所有这些编码 Agent 创业公司都有如此高的估值, 而一个开发者自己构建一个却如此容易.
+
+** 编写文件编辑工具
+
+我们将构建一些文件编辑工具, 允许 LLM 操作文件. 这将解锁编码 Agent 的行为.
+
+*** 读取文件
+
+我们将提供给 LLM 的第一个工具是文件读取工具. 它可以被编码和注解, 以便 LLM 发现, 如下所示:
+
+#+BEGIN_SRC clojure
+(defn
+  ^{:tool {:name "read_file"
+           :description "Read the contents of a given relative file path. Use this when you want to see what's inside a file. Do not use this with directory names."
+           :parameters {:type "object"
+                        :properties {:path {:type "string"
+                                            :description "The relative path of a file in the working directory."}}
+                        :required ["path"]}}}
+  read-file
+  [{:keys [path]}]
+  (try
+    (slurp path)
+    (catch Exception e (str "Caught exception:" (.getMessage e)))))
+#+END_SRC
+
+我们可以通过让 LLM 总结文件内容来立即看到这个工具的用处. 下面是一个示例运行:
+
+#+BEGIN_EXAMPLE
+ You: What is the secret-file.txt
+
+ tool: read_file {:path secret-file.txt}
+
+ LLM: secret-file.txt contains a riddle:
+
+ "what animal is the most disagreeable because it always says neigh?"
+
+ Answer: A horse - because it always says "neigh" (pun on "nay," meaning "no").
+#+END_EXAMPLE
+
+LLM 现在可以读取文件内容并对内容进行推理. 就像解开文件 ~secret-file.txt~ 中的谜题一样.
+
+*** 列出目录
+
+接下来, 让我们给它一个工具来列出文件夹中的文件. 这将使我们不必为它提供精确的文件名来进行推理.
+
+#+BEGIN_SRC clojure
+(defn
+  ^{:tool {:name "list_files"
+           :description "List files and directories at a given path. If no path is provided, lists files in the current directory."
+           :parameters {:type "object"
+                        :properties {:path {:type "string"
+                                            :description "Optional relative path to list files from. Defaults to current directory if not provided."}}}}}
+  list-files
+  [{:keys [path]}]
+  (let [dir (io/file (or (not-empty (str/trim path)) "."))]
+    (if (.isDirectory dir)
+      (str (mapv (fn [f]
+                   {:name (.getName f)
+                    :type (if (.isDirectory f) "directory" "file")}) (.listFiles dir)))
+      "No files in the folder")))
+#+END_SRC
+
+利用上面的工具, 我们现在可以总结整个文件夹的内容. 让我们看一个示例运行:
+
+#+BEGIN_EXAMPLE
+You: What does the clojure code inside this folder do?
+tool: list_files {:path }
+tool: list_files {:path src}
+tool: list_files {:path src/agent}
+tool: read_file {:path src/agent/core.clj}
+tool: read_file {:path src/agent/tools.clj}
+tool: read_file {:path llm.edn}
+LLM: Summary
+- This is a small Clojure CLI "assistant" that talks to an LLM (via the wkok.openai-clojure client) and supports tool/function calls the LLM can request.
+- The main pieces are:
+  - src/agent/core.clj - orchestration, LLM calls, message loop, tool discovery/invocation.
+  - src/agent/tools.clj - example tool implementations (get_current_weather, read_file, list_files).
+  - llm.edn - configuration (API key, endpoint, model, impl).
+
+What the program does (high level)
+1. Reads llm.edn to get API endpoint, key, model, etc.
+2. Discovers "tools" in the agent.tools namespace by looking for functions with :tool metadata (this metadata includes name, description, and parameter schema).
+3. Enters a REPL-style loop:
+   - Prompts the user for input.
+   - Adds the user message into the conversation history.
+   - Calls the LLM via openai/create-chat-completion, passing the messages and the tool list (and tool_choice "auto").
+   - Inspects the LLM response. If the LLM returns tool calls (under :tool_calls), the code:
+     - Maps each tool call to the actual Clojure function (from the tool registry),
+     - Parses the JSON arguments,
+     - Invokes the function and collects the tool output,
+     - Adds each tool output back into the conversation as a tool-message (role "tool"), and
+     - Repeats the LLM call with the extended message history until there are no more tool calls.
+   - When a final assistant message is produced, prints it and returns to prompting the user.
+
+Details of important functions / behavior
+- get-tool-list: produces a vector of tool descriptors (for sending to the LLM) by reading :tool metadata on public functions in agent.tools.
+- build-tool-registry: builds a map from tool name to the actual Clojure fn for runtime invocation.
+- call-llm-api: calls openai/create-chat-completion with model, messages, tools and config keys (:api-key, :api-endpoint, :impl).
+- extract-first-response: pulls the first choice's message from the API result (warns if multiple choices).
+- handle-tool-call / invoke-tool: parse the JSON arguments with Cheshire and call the matching function from the registry; returns a vector of tool responses inserted into message history.
+- read-user-input! / display-assistant-response! - simple CLI I/O with colored output sequences.
+- parse-json-arguments uses cheshire.core/parse-string to convert the JSON argument string into Clojure data.
+
+Example tools (agent.tools)
+- get-current-weather: prints a message and returns "-25.0 C" (stubbed).
+- read-file: slurps and returns the contents of a given relative file path.
+- list-files: lists files/directories at a path (or current directory) and returns a vector-like string of {:name ... :type ...} maps.
+
+Security / safety notes
+- llm.edn contains an API key and endpoint - treat it as sensitive. The repository also contains secret-file.txt; the read_file tool can read arbitrary files, so an LLM or a user could trigger reading sensitive files.
+- Tools run arbitrary code in the running process (they are Clojure functions). Be careful exposing them to untrusted LLM output/inputs.
+
+How to run (brief)
+- Use the Clojure CLI (deps.edn is present). Run the main -main in agent.core. The program will prompt you in the terminal and interact with the configured LLM.
+
+In short: this project implements a chat loop with an LLM that can request and receive the results of local "tools" (functions), and includes a few example tools (file listing/reading and a stub weather function).
+#+END_EXAMPLE
+
+*** 搜索和替换文本
+
+最后, 为了让 LLM 能够修改文本, 让我们实现一个搜索和替换工具. 这个工具非常原始 - 只做一个简单的搜索和替换; 但即使有这个工具, LLM 也能突然开始编写可以解决编码问题的代码.
+
+#+BEGIN_SRC clojure
+(defn
+  ^{:tool {:name "edit_file"
+           :description "Make edits to a text file.
+Replaces 'old_str' with 'new_str' in the given file. 'old_str' and 'new_str' MUST be different from each other.
+If the file specified with path doesn't exist, it will be created."
+           :parameters {:type "object"
+                        :properties {:path {:type "string"
+                                            :description "The path to the file"}
+                                     :old_str {:type "string"
+                                               :description "Text to search for - must match exactly and must only have one match exactly"}
+                                     :new_str {:type "string"
+                                               :description "Text to replace old_str with"}}
+                        :required ["path" "old_str" "new_str"]}}}
+  edit-file
+  [{:keys [path old_str new_str]}]
+  (if (= old_str new_str)
+    "Error: 'old_str' and 'new_str' must be different."
+    (let [file (io/file path)]
+      (if (.exists file)
+        (let [content (slurp file)]
+          (if (not (str/includes? content old_str))
+            (str "Error: '" old_str "' not found in the file.")
+            (let [updated-content (str/replace content old_str new_str)]
+              (spit file updated-content)
+              (str "Successfully replaced '" old_str "' with '" new_str "' in " path))))
+        (try
+          (spit file "") ; Create an empty file if it doesn't exist
+          (str "File not found. Created an empty file at " path)
+          (catch Exception e (str "caught exception: " (.getMessage e))) )))))
+#+END_SRC
+
+让我们看一个有这个工具可用时的示例运行:
+
+#+BEGIN_EXAMPLE
+You: create fizzbuzz.js that I can run with Nodejs and that has fizzbuzz in it and executes it
+tool: list_files {:path }
+tool: edit_file {:path fizzbuzz.js, :old_str , :new_str ...}
+tool: read_file {:path fizzbuzz.js}
+tool: edit_file {:path fizzbuzz.js, :old_str , :new_str ...}
+tool: read_file {:path fizzbuzz.js}
+LLM: I created fizzbuzz.js in the project root.
+
+How to run:
+- Default (1–100): node fizzbuzz.js
+- Specify n: node fizzbuzz.js 30
+
+The file exports the fizzbuzz function if you want to require/import it in another module.
+
+user@user-home:~/Source/code-editing-agent$ node fizzbuzz.js
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz
+... (output truncated for brevity)
+
+You: Please edit fizzbuzz.js so that it only prints until 15
+tool: edit_file {:path fizzbuzz.js, :old_str ... :new_str ... }
+tool: read_file {:path fizzbuzz.js}
+LLM: Done - fizzbuzz.js was updated to enforce a maximum of 15. It will:
+
+- Accept an optional n argument, but only print up to 15.
+- If you request more than 15, it prints a short message to stderr like "Requested 100; printing only up to 15." and then prints results 1–15.
+
+Run with:
+- node fizzbuzz.js
+- node fizzbuzz.js 20
+
+Let me know if you want it to silently cap at 15 (no message) or to ignore command-line arguments entirely.
+
+user@user-home:~/Source/code-editing-agent$ node fizzbuzz.js
+Requested 100; printing only up to 15.
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz
+
+#+END_EXAMPLE
+
+LLM 现在能够生成一个完整的程序并根据用户的要求进行修改. 即使使用如此基础的搜索替换工具, 这也是可能的 - 因为 LLM 重写了整个文件. 想象一下使用更好的工具会有什么可能性.
+
+#+BEGIN_EXAMPLE
+You: Create a congrats.js script that rot13-decodes the following string 'Pbatenghyngvbaf ba ohvyqvat n pbqr-rqvgvat ntrag!' and prints it
+tool: edit_file {:path congrats.js, :old_str , :new_str ...}
+tool: edit_file {:path congrats.js, :old_str , :new_str ...}
+tool: read_file {:path congrats.js}
+LLM: I created congrats.js. It decodes the ROT13 string and prints the result.
+
+Run with:
+- node congrats.js
+
+If you'd like the script to accept input from the command line or a file instead, I can update it.
+
+user@user-home:~/Source/code-editing-agent$ node congrats.js
+Congratulations on building a code-editing agent!
+#+END_EXAMPLE
+
+如你所见, 在强大的 LLM 支持下, 编写一个编码 Agent 是相当简单的. 应该有人为我这篇文章给我开张支票 :D. 在下一篇文章中, 让我们看看如何让 Agent 变得更加自主.
+
+* 构建一个编码 Agent: 第 5 部分 - 为 Agent 赋予更多能力
+
+现在我们有了一个可以工作的 Agent - 让我们给它更多能力. 在上一篇文章中, 有些事情没有用户的干预是无法完成的. 例如, 我们无法生成任何 Clojure/Clojurescript 代码, 因为它需要一个文件夹结构才能正确识别源文件. 让我们在这篇文章中解决这个问题. 我们可以零散地添加像创建文件夹之类的工具, 但为了给 LLM 更多的自主权; 我们将为它配备一个 shell 执行工具.
+
+** 运行 shell 命令
+
+一个简单的 ~run_shell_command~ 工具可以实现如下:
+
+#+BEGIN_SRC clojure
+(defn
+  ^{:tool {:name "run_shell_command"
+           :description "Run the provided bash shell command and get the output"
+           :parameters {:type "object"
+                        :properties {:command {:type "string"
+                                               :description "Command to be executed"}}
+                        :required ["command"]}}}
+  run-shell-command
+  [{:keys [command]}]
+  (try
+    (let [{:keys [out err exit]} (shell/sh "bash" "-c" command)]
+      (if (zero? exit)
+        out
+        (str "Error: " err)))
+    (catch Exception e
+      (str "Exception occurred: " (.getMessage e)))))
+#+END_SRC
+
+有了这一个工具, 我们的编码 Agent 就更有自主性了 :D. 让我们看一个使用它的示例运行.
+
+** 演示
+
+#+BEGIN_EXAMPLE
+You: Can you write a shadow-cljs based fizzbuzz script?
+
+tool: edit_file {:path package.json, :old_str , :new_str { ... }}
+tool: edit_file {:path shadow-cljs.edn, :old_str , :new_str { ... }}
+tool: edit_file {:path src/fizz/core.cljs, :old_str , :new_str (ns fizz.core) ...}
+tool: edit_file {:path README.md, :old_str , :new_str Shadow-cljs FizzBuzz ...}
+tool: run_shell_command {:command mkdir -p src/fizz && ls -R}
+tool: edit_file {:path src/fizz/core.cljs, :old_str , :new_str (ns fizz.core) ...}
+tool: read_file {:path package.json}
+tool: read_file {:path shadow-cljs.edn}
+tool: read_file {:path src/fizz/core.cljs}
+tool: run_shell_command {:command cat > package.json << 'EOF' ...}
+LLM: Yes - I created a minimal shadow-cljs FizzBuzz project for Node.js. Files created and what they do:
+
+- package.json - npm scripts to run, watch, and build using shadow-cljs.
+- shadow-cljs.edn - shadow-cljs build config (target :node-script, main fizz.core, output out/fizz.js).
+- src/fizz/core.cljs - the FizzBuzz implementation and -main entry point.
+- README.md - usage instructions.
+
+Core code (src/fizz/core.cljs):
+(ns fizz.core)
+
+(defn fizzbuzz [n]
+  (cond
+    (zero? (mod n 15)) "fizzbuzz"
+    (zero? (mod n 3)) "fizz"
+    (zero? (mod n 5)) "buzz"
+    :else (str n)))
+
+(defn -main [& args]
+  (let [n (if (and args (seq args))
+            (let [p (first args)]
+              (js/parseInt p 10))
+            100)]
+    (doseq [i (range 1 (inc n))]
+      (js/console.log (fizzbuzz i)))))
+
+Quick usage:
+
+1. Install dependencies:
+   npm install
+
+2. Run directly (using local shadow-cljs):
+   npx shadow-cljs run -m fizz.core -- 100
+   or via npm script:
+   npm run run -- 100
+
+3. Build and run the generated script:
+   npm run build
+   node out/fizz.js 100
+
+4. Watch during development:
+   npm run watch
+
+Example output for n = 15:
+1
+2
+fizz
+4
+buzz
+fizz
+7
+8
+fizz
+buzz
+11
+fizz
+13
+14
+fizzbuzz
+
+If you want, I can:
+- change argument parsing to be more robust,
+- add tests,
+- or produce a version that prints to stdout using cljs.node/console equivalents. Which would you prefer?
+#+END_EXAMPLE
+
+有了 ~run_shell_command~ 工具, LLM 可以使用各种 Unix 命令尝试各种事情. 完成代码后, 我们还可以要求它清理仓库状态, 回到原始状态.
+
+#+BEGIN_EXAMPLE
+You: Go back to a clean state. Please preserve llm.edn
+
+tool: run_shell_command {:command rm -f package.json shadow-cljs.edn README.md src/fizz/core.cljs || true ...}
+LLM: Done - I removed the files I created (package.json, shadow-cljs.edn, README.md, and src/fizz/core.cljs) and left the repository otherwise intact. I preserved llm.edn as requested.
+You: Empty folder exist.
+tool: run_shell_command {:command ls -la src || true ...}
+tool: run_shell_command {:command rmdir src/fizz || true ...}
+LLM: Thanks - I removed the empty src/fizz directory so there are no leftover empty folders. The project has been returned to the earlier clean state and llm.edn preserved.
+You: Is it a clean git state?
+tool: run_shell_command {:command git status --porcelain --untracked-files=all || true ...}
+LLM: Yes - your repo is in a clean git state.
+
+What I checked:
+- git status --porcelain returned nothing (no modified or untracked files).
+- Current branch: main
+- Latest commit: d5a5962 Add a simple FizzBuzz run
+
+If you want to verify locally yourself, run:
+- git status
+- git status --porcelain   (empty output = clean)
+- git branch --show-current
+- git log --oneline -n 5
+
+If you ever need to force-reset to the last commit (discard local changes/untracked files), you can use (be careful - these destroy local changes):
+- git reset --hard HEAD
+- git clean -fd    (add -x to remove ignored files too)
+
+Would you like me to make any git changes (commit, create a branch, or revert something)?
+#+END_EXAMPLE
+
+就是这样. 你能用编码 Agent 做的任何事情, 用这段代码都可以实现. 让我们问问 LLM 它有多大? (跳过整个输出). 这是 LLM 报告的内容.
+
+#+BEGIN_EXAMPLE
+LLM: Summary of the Clojure/CLJS sources in this repo (analysis run on src/):
+
+- Total Clojure source files found: 2
+  - src/agent/core.clj - 135 lines
+  - src/agent/tools.clj - 101 lines
+- Total lines (all files): 236
+- Top-level def-forms found: 20 (all are defn/defn-; no defmacro, no plain top-level def)
+  - defn / defn- total: 20
+  - defn- (private fns): 12 (all in core.clj)
+  - public defn: 8 (3 in core.clj, 5 in tools.clj)
+- No macros detected (defmacro = 0).
+#+END_EXAMPLE
+
+一个功能齐全的编码 Agent 只需要 236 行代码. 太神奇了, 我们生活在一个怎样的世界里.
+
+免责声明: 这段代码容易受到各种安全攻击, 不建议在没有安全措施的情况下运行.
+
+* 构建一个编码 Agent: 第 6 部分 - 集成模型上下文协议 (MCP)
+
+Anthropic 推出了一项新协议, 允许标准化为 LLM 编写工具的方式 - 模型上下文协议 (Model Context Protocol). 在本文中, 让我们将我们的 Agent 与 MCP 客户端 SDK 集成. 这将使我们能够与公开可用的 MCP 服务器集成, 并从为我们想要交互的每个服务编写工具中解放出来.
+
+** MCP 协议库
+
+让我们集成官方的 Java MCP 客户端库, 因为目前还没有库允许我们在 Clojure 中使用 MCP 服务器. 该库的文档位于 [[https://github.com/model-context-protocol/mcp-java-sdk][MCP Java SDK]].
+
+我以前从未在 Clojure 中进行过 Java 互操作. 所以, 这是一次很好的学习经历. 使用 MCP 服务器的步骤如下:
+
+创建 MCP 客户端 ->
+  初始化服务器 ->
+    列出工具并交给 LLM ->
+      按需调用工具 ->
+        完成后关闭会话
+
+为了获得 MCP 服务器连接, 我们需要先创建一个客户端. 该库支持两种类型的客户端: 同步 (Sync) 和异步 (Async). 为简单起见, 让我们使用同步客户端.
+
+要创建一个同步客户端, 我们首先需要一个服务器的传输 (transport). 可以有多种类型的传输, 但对于本地服务器, ~Stdio~ 效果很好. 让我们先创建传输:
+
+#+BEGIN_SRC clojure
+(defn- make-transport
+  [program args]
+  (-> (ServerParameters/builder program)
+      (.args (into-array String args))
+      (.build)
+      (StdioClientTransport. (McpJsonMapper/getDefault))))
+#+END_SRC
+
+我们传入一个程序及其参数来创建传输. 在我们的例子中, 我们将使用 Anthropic 提供的默认文件系统服务器. 所以, 调用将是:
+
+#+BEGIN_SRC clojure
+(make-transport "npx" ["-y" "@modelcontextprotocol/server-filesystem" "."])
+#+END_SRC
+
+一旦我们有了可用的传输, 我们将用它来创建一个同步的 MCP 客户端.
+
+#+BEGIN_SRC clojure
+(defn make-client
+  "Create a client to the MCP server specified"
+  [program args]
+  (-> (make-transport program args)
+      McpClient/sync
+      (.build)))
+#+END_SRC
+
+现在我们可以使用以下代码查询该服务器的工具列表:
+
+#+BEGIN_SRC clojure
+(defn get-tools
+  "Get the list of tools exposed by the MCP server in a format which is compatible to the OpenAI endpoint"
+  [server]
+  (let [result (.listTools server)
+        tools (.tools result)]
+    (mapv #(mcp-tool->openai-tool (tool-result->clj %)) tools)))
+#+END_SRC
+
+我们将这个工具列表与我们的其他工具一起传入. 由于我们正在使用 Anthropic 文件系统 MCP 服务器, 我们将注销我们自己的工具. 我们只保留 shell 执行工具. 我们现在只需要更改 ~invoke-tool~ 函数, 以便在没有可用编码工具时调用 MCP 工具. 更改后的代码如下所示:
+
+#+BEGIN_SRC clojure
+(defn- invoke-tool [tools tc client]
+  (let [name (get-in tc [:function :name])
+        tool-fn (get tools name)
+        args (get-in tc [:function :arguments])
+        parsed-args (parse-json-arguments args)]
+    (label "Tool" :green)
+    (println name)
+    (pprint/pprint parsed-args)
+    (if (some? tool-fn)
+      (tool-fn parsed-args)
+      (agent.mcpclient/call-tool client name args))))
+#+END_SRC
+
+我们自己编码的函数期望 Clojure map, 但 MCP 工具需要 JSON 字符串. 为了避免从 JSON 到 Clojure 再返回的往返转换, 我们将 JSON 字符串原样传递给 MCP 工具调用. MCP 工具函数编写如下:
+
+#+BEGIN_SRC clojure
+(defn call-tool
+  "Invoke an MCP tool with the given params"
+  [client tool params]
+  (let [request (McpSchema$CallToolRequest. (McpJsonMapper/getDefault) tool params)]
+    (tool-result->clj (.callTool client request))))
+#+END_SRC
+
+工具结果的解析如下完成:
+
+#+BEGIN_SRC clojure
+(defn- tool-result->json
+  [tool-result]
+  (let [mapper (McpJsonMapper/getDefault)]
+    (try
+      (.writeValueAsString mapper tool-result)
+      (catch Exception e
+        (throw (ex-info "Failed to serialize ToolResult to JSON" {:cause e}))))))
+
+(defn- tool-result->clj
+  [tool-result]
+  (let [json (tool-result->json tool-result)]
+    (cheshire/parse-string json true)))
+#+END_SRC
+
+** 演示
+
+现在让我们看一个使用 MCP 工具进行文件系统操作的演示运行.
+
+#+BEGIN_EXAMPLE
+Debug : Registering tool run_shell_command
+Debug : Registering tool read_file
+Debug : Registering tool read_text_file
+Debug : Registering tool read_media_file
+Debug : Registering tool read_multiple_files
+Debug : Registering tool write_file
+Debug : Registering tool edit_file
+Debug : Registering tool create_directory
+Debug : Registering tool list_directory
+Debug : Registering tool list_directory_with_sizes
+Debug : Registering tool directory_tree
+Debug : Registering tool move_file
+Debug : Registering tool search_files
+Debug : Registering tool get_file_info
+Debug : Registering tool list_allowed_directories
+You : Which libraries are used in the current project?
+Tool : list_directory
+{:path "."}
+Tool : read_text_file
+{:path "deps.edn"}
+LLM : I inspected deps.edn. Libraries (with versions) used in the project are:
+
+Main :deps
+- org.clojure/clojure 1.12.0
+- net.clojars.wkok/openai-clojure 0.23.0
+- cheshire/cheshire 6.1.0
+- com.bunimo/clansi 1.3.1
+- io.modelcontextprotocol.sdk/mcp 0.15.0
+
+Aliases (extra deps)
+- lambdaisland/kaocha 1.91.1392 (under :kaocha alias)
+- io.github.borkdude/quickblog (specified by git sha: 68f22a3de58af9a48f8b5aa92ee329e495d246a7) (under :quickblog alias)
+- org.babashka/cli 0.3.35 (under :quickblog alias)
+
+If you want, I can search the code to show where each library is used.
+You : Can you please run the tests
+Tool : run_shell_command
+{:command "clojure -M:kaocha"}
+LLM : I ran the test suite. Output summary:
+
+3 tests, 3 assertions, 0 failures.
+
+Would you like the full test output or a breakdown of which tests ran?
+You : Show the full test output
+Tool : run_shell_command
+{:command
+ "clojure -M:kaocha --reporter documentation 2>&1 | sed -n '1,400p'"}
+LLM : Here is the full test output (including the test names and the final summary):
+
+--- unit (clojure.test) ---------------------------
+agent.mcpclient-test
+  mcp-tool->openai-tool-missing-name-test
+  mcp-tool->openai-tool-test
+  mcp-tool->openai-tool-defaults-test
+
+3 tests, 3 assertions, 0 failures.
+You : quit
+Exiting...
+#+END_EXAMPLE
+
+LLM 能够使用 Filesystem MCP 服务器生成项目中使用的库的摘要. 它还使用我们的 ~run_shell_command~ 工具来运行项目中的测试.
+
+完整的代码清单在[[https://github.com/s-gopale/code-editing-agent/tree/part-6][这里]]. 除了 Clojure, 你还需要在你的机器上安装 Node, 以便能够运行 MCP 服务器.
+
+* 构建一个编码 Agent: 第 7 部分 - 支持多个 MCP 服务器
+
+在上一篇文章中, 我们研究了如何连接到一个 MCP 服务器 - 特别是 Anthropic 的文件系统 MCP 服务器. 让我们扩展编码 Agent 的功能, 使其能够与多个可配置的 MCP 服务器对话.
+
+** mcp.json 配置
+
+我们将重用 Claude Code 用于配置 MCP 服务器的相同格式. 该文件的格式如下:
+
+#+BEGIN_SRC json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/username/Desktop",
+        "/path/to/other/allowed/dir"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  }
+}
+#+END_SRC
+
+每个 MCP 服务器都指定了一个可执行文件的路径. 我们只处理本地 MCP 服务器, 将远程 MCP 服务器留到另一篇文章中讨论.
+
+** 处理多个 MCP 服务器
+
+我们之前直接在 MCP 客户端连接上调用了工具, 因为我们只有一个 MCP 服务器, 不需要区分调用. 在支持多个 MCP 服务器时, 我们需要将工具调用路由到正确的 MCP 服务器. 为此, 让我们移除直接的 MCP 工具调用, 并利用工具注册表 (tool registry) 来引导调用. 回想一下, 我们曾构建了一个工具注册表来注册基于函数的工具调用. 该注册表是一个 ~名称 -> 函数~ 形式的 map. 让我们保持相同的结构, 只不过我们将函数绑定到一个动态函数上, 该函数会酌情调用 MCP 工具.
+
+我们将每个 MCP 工具绑定到一个如下形式的函数上. ~server~ 和 ~name~ 在创建绑定时已经可用. ~args~ 由 ~invoke-tool~ 调用传入.
+
+#+BEGIN_SRC clojure
+(fn [args] (call-tool server name args))
+#+END_SRC
+
+#+BEGIN_SRC clojure
+(defn- build-tool-registry
+  [client]
+  (let [result (.listTools client)
+        tools (.tools result)
+        tool-metadata (mapv #(mcp-tool->openai-tool (tool-result->clj %)) tools)]
+    (reduce (fn [acc f]
+              (let [name (get-in f [:function :name])]
+                (assoc acc name (fn [args] (call-tool client name args)))))
+            {} tool-metadata)))
+#+END_SRC
+
+由于我们的常规工具需要解析后的 json 参数 - 我们将更改该函数的绑定, 将 json 字符串参数转换为 Clojure map.
+
+#+BEGIN_SRC clojure
+(defn build-tool-registry
+  "Builds a map of tool names to their corresponding functions"
+  [ns]
+  (->> (ns-publics ns)
+       vals
+       (filter #(:tool (meta %)))
+       (reduce (fn [acc f]
+                 (let [name (get-in (meta f) [:tool :name])]
+                   (assoc acc name (fn [args] (f (parse-json-arguments args))))))
+               {})))
+#+END_SRC
+
+** 演示
+
+我们将通过以下提示强制 LLM 使用思维工具 - "帮我用 CLJS 写一个阶乘函数. 在写代码之前请先思考一下. 请使用你可用的工具." 有了这个提示, LLM 会使用它可用的两个 MCP 服务器.
+
+#+BEGIN_EXAMPLE
+----- Registering MCP Servers ----
+Connecting  :sequential-thinking
+Connecting  :filesystem
+Debug : Registering tool run_shell_command
+Debug : Registering tool sequentialthinking
+Debug : Registering tool read_file
+Debug : Registering tool read_text_file
+...
+You : Help me write a factorial function in CLJS. Please think a bit before writing the code. Please use the tools available to you.
+----- Use of the Sequential Thinking MCP server ----
+Tool : sequentialthinking
+{:thoughtNumber 1,
+ :totalThoughts 6,
+ :thought
+ "I need to plan before coding. Decide which factorial variants to provide and consider CLJS-specific constraints: recursion vs tail recursion, JS number limits, validation of input. Provide clear examples and safe checks.",
+ :nextThoughtNeeded true}
+Tool : sequentialthinking
+{:thoughtNumber 2,
+ :totalThoughts 6,
+ :thought
+ "I should implement two versions: a simple recursive factorial and a tail-recursive one using ClojureScript's recur or loop/recur. CLJS supports recur but needs to be in tail position. Also consider using BigInt for large factorials? JavaScript BigInt exists but CLJS interop may be needed – use js/BigInt. Provide an arbitrary-precision variant using BigInt and one using numbers. Also include input validation: ensure n is integer >= 0.",
+ :nextThoughtNeeded true}
+Tool : sequentialthinking
+{:thoughtNumber 3,
+ :totalThoughts 6,
+ :thought
+ "Decide file structure: write a CLJS file with namespace, docstrings, and exported functions. Possibly provide examples/tests. Use cljs.node or browser? Keep generic. I'll create src/factorial/core.cljs with functions: factorial (number, tail-recursive using loop/recur), factorial-bigint using js/BigInt and recursive loop. Add validation functions and small test printouts in -main for Node. Use ^:export to expose functions.",
+ :nextThoughtNeeded true}
+----- Use of the filesystem server ----
+Tool : create_directory
+{:path "src/factorial"}
+Tool : write_file
+{:path "src/factorial/core.cljs",
+ :content ...}
+Tool : edit_file
+{:path "src/factorial/core.cljs",
+ :edits ...}
+
+LLM : Thanks - I thought through options before writing code and used the workspace to create a small CLJS module with two implementations and examples.
+... (LLM response summary) ...
+#+END_EXAMPLE
+
+完整的代码清单在[[https://github.com/s-gopale/code-editing-agent/tree/part-7][这里]].
+
+
+* 构建一个编码 Agent: 第 8 部分 - 使用本地模型
+
+** 使用 Ollama 模型
+
+既然我们构建了一个工作得还不错的编码 Agent, 让我们看看是否能让它在本地模型上运行. 互联网上有很多关于本地模型是这个领域未来的说法. 让我们验证一下这个说法是否成立.
+
+我们将使用 Ollama 来运行一个本地模型. 幸运的是, 它开箱即用地支持 OpenAI API. 所以, 如果你连接到 ~http://localhost:11434/v1~, 你就可以重用我们已经编写的 Agent 来尝试不同的模型.
+
+我的配置是 AMD Ryzen 1600 桌面电脑, 32GB 内存和一块 RTX 3060 12 GB. 所以, 我在 CPU 和 GPU 方面都比较差 :D.
+
+*** Llama 3.2 (3B)
+
+我尝试的第一个是 Llama 3.2 (3b). 我们必须寻找支持工具调用的模型才能让 Agent 工作. 例如, Google 的 Gemma 模型不支持工具调用, 因此不能与我们的 Agent 一起使用. Llama 3.2 的模型下载量相对较小 - 大约 2 GB. 由于它完全装入了我的设备的 VRAM, 速度也相当快. 我可以在 2 秒内得到响应. 然而, 优点到此为止. 该模型会幻觉出工具调用并错误地调用它们 - 大多数情况下它无法生成正确的工具调用格式. 我给了它一个编写 Javascript FizzBuzz 程序的任务, 这是我得到的结果.
+
+#+BEGIN_EXAMPLE
+You : Write me a FizzBuzz Javascript program with the tools available to you
+Tool : run_shell_command
+{:command
+ "node -e <garbage generated>}
+LLM : It seems like the shell command is not executed correctly.
+
+Here's a simplified version of FizzBuzz written in JavaScript using a conventional syntax:
+
+function fizzBuzz(n) {
+    ...
+}
+
+fizzBuzz(20);
+
+...
+Debug : {:completion_tokens 334, :prompt_tokens 227, :total_tokens 561} Response took -  3.772  s
+You : quit
+#+END_EXAMPLE
+
+所以, 这个模型表现不佳. 它甚至无法正确调用工具来读/写文件.
+
+*** Qwen 2.5 coder (1.5B)
+
+我听过很多关于 Qwen 编码模型的赞誉. 所以, 接下来我尝试了其中最小的一个 - 1.5B 参数的版本. Ollama 为此下载了大约 1GB 的模型数据. 我问它当前文件夹中的程序是做什么的?
+
+#+BEGIN_EXAMPLE
+You : What does the program in the current folder do?
+LLM : The program in the current folder is a Python script named <script-name>, and it uses the run_shell_command function from the tools section to execute the command find . -type f -exec cat {} + > results.txt.
+
+json
+{
+  "name": "run_shell_command",
+  "arguments": {
+    "command": "find ./ -type f -exec cat {} + > results.txt"
+  }
+}
+Debug : {:completion_tokens 91, :prompt_tokens 2405, :total_tokens 2496} Response took -  3.842  s
+You : quit
+#+END_EXAMPLE
+
+没用. 它也无法运行任何工具. 也许我应该尝试一个更大的模型.
+
+*** Qwen 3 VL (8b)
+
+也许模型的大小是个问题. 让我们试试一个更大的模型. 最新的 Qwen 3 VL (8b) 参数. 这个模型完美地处理了工具调用, 并且能够回答当前项目中的代码是做什么的.
+
+#+BEGIN_EXAMPLE
+You : What does the program in the current folder do?
+Tool : list_directory
+{:path ". "}
+Tool : list_allowed_directories
+{}
+Tool : list_directory
+{:path "/home/sgopale/Source/code-editing-agent"}
+Tool : list_directory
+{:path "/home/sgopale/Source/code-editing-agent/src"}
+Tool : list_directory
+{:path "/home/sgopale/Source/code-editing-agent/src/agent"}
+Tool : read_text_file
+{:path "/home/sgopale/Source/code-editing-agent/src/agent/core.clj"}
+Reasoning : Okay, so the user asked what the program in the current folder does. After listing the directories and checking the contents, I found that the main program is likely in the 'agent' directory's core.clj file. The tool response shows that core.clj is a Clojure script.
+...
+LLM : The program in the current folder is a Clojure-based interactive agent/assistant system designed to interact with LLMs (Large Language Models) and execute tools based on user input. Below is a breakdown of its purpose and functionality:
+...
+Debug : {:completion_tokens 1140, :prompt_tokens 7151, :total_tokens 8291} Response took -  44.885  s
+#+END_EXAMPLE
+
+终于成功了. 这个模型在工具调用方面工作可靠, 并且在总结代码功能方面做得不错. 然而, 对我来说太慢了. 它处理这个提示大约花了 45 秒. 与 Azure 托管的 GPT-5 mini 模型相比, 在线模型需要 11 秒. 在线模型是以最便宜的配置运行的, 所以如果我们愿意支付更多, 速度可以更快.
+
+所以, 即使 AI Agent 的未来是本地模型. 我相信我们还没有到那个未来, 至少对于可以调用工具的编码 Agent 来说是这样. 也许这些模型擅长回答关于代码的问题. 我没有在那个用例上尝试过它们. 在我的工作流程中, 我会继续使用在线托管的模型.
+
+* 构建一个编码 Agent: 第 9 部分 - 添加命令处理
+
+如果我们看看 Agent 目前的代码, 聊天循环很混乱. 它看起来像这样:
+
+获取用户输入 -> 调用 LLM
+
+主循环的代码目前是这样的.
+
+#+BEGIN_SRC clojure
+(loop [user-message (read-user-input!)
+           messages [(get-system-prompt)]]
+      (when (some? user-message)
+        (let [new-messages (add-message-to-history messages user-message)
+              {:keys [history usage]} (get-assistant-response new-messages config mcp-tools combined-registry)
+              assistant-message (:content (last history))]
+          (display-assistant-response! assistant-message)
+          (dbg-print usage)
+          (recur (read-user-input!) history))))
+#+END_SRC
+
+目前除了退出之外没有其他操作方式. 这也是因为我们在 ~read-user-input!~ 函数内部添加了一个硬编码的检查, 看用户是否输入了退出消息. 当用户输入 ~quit~ 时, 我们返回一个空输入, 这与用户通过 Ctrl+D 输入 EOF 的情况相同. 这会终止正在检查用户是否有输入的聊天循环.
+
+如果你看看其他可用的 Agent, 它们提供了 ~/commands~, 允许用户修改诸如对话历史, 更换模型等内容. 然而, 用我们目前的 ~read-user-input!~ 方法, 这些都无法实现.
+
+让我们重构这个方法, 使其易于扩展. 我们将通过将简单的循环转换为状态转换循环来实现这一点. 我们将添加一个新函数 ~handle-user-input!~, 它将处理特殊命令并通过一个下一状态的返回值来指示状态转换. 此外, 我们希望能够实现诸如清除对话历史和更换模型之类的功能, 所以 ~handle-user-input!~ 函数需要能够改变状态. 为了实现这一点, 我们将创建一个状态 map, 它由以下部分组成:
+
+#+BEGIN_SRC clojure
+{
+  :history [] ; 一个保存对话历史的 vector
+  :prompts {} ; 一个保存默认提示 (如系统提示) 的 map
+  :config {} ; 一个包含模型信息的 map
+  :tools [] ; 一个模型可用的工具 vector, 可以是 MCP 或编码工具
+  :tool-registry {} ; 一个工具名称到调用函数的 map. 这将允许我们处理模型的工具调用
+  :next-state :key ; LLM 聊天循环应该转换到的下一个状态
+}
+#+END_SRC
+
+在这个版本中, 我们将支持三种状态:
+
+- ~:quit~ 退出应用
+- ~:llm~ 使用当前历史调用 LLM API
+- ~:user~ 从用户处获取输入
+
+有了这三种状态, 我们的聊天循环变得更简单了. ~handle-user-input!~ 函数接收当前状态并返回一个新状态. 这使我们能够轻松地实现像清除历史, 更换模型等命令. 因为我们可以改变存储在状态 map 中的配置. 在实现我们的 ~handle-user-input!~ 函数后, 主循环看起来像这样:
+
+#+BEGIN_SRC clojure
+(loop [{:keys [next-state] :as current-state} (state/handle-user-input! initial-state (read-user-input!))]
+      (cond
+        (= next-state :quit)
+        (do
+          (println "Exiting")
+          (doseq [server servers]
+            (println "Closing " (:name server))
+            (mcpclient/close-client (:client server))))
+
+        (= next-state :llm)
+        (let [{:keys [history] :as response} (get-assistant-response current-state)]
+          (display-assistant-response! response)
+          (recur (state/handle-user-input! (assoc current-state :history history) (read-user-input!))))
+
+        (= next-state :user)
+        (recur (state/handle-user-input! current-state (read-user-input!))))
+#+END_SRC
+
+我们的 ~handle-user-input!~ 函数可以写成:
+
+#+BEGIN_SRC clojure
+(defn handle-user-input!
+  [{:keys [history prompts] :as state} input]
+  (if
+   (str/starts-with? input "/")
+    (let [args (str/split input #" ")
+          command (-> (first args) (subs 1) str/lower-case keyword)]
+      (cond (= command :quit)
+            (assoc state :next-state :quit)
+
+            (= command :clear)
+            (do
+              (println "Clearing history")
+              (assoc state :next-state :user
+                     :history [(:system-prompt prompts)]))
+
+            (= command :debug)
+            (do
+              (println "====== Current State ======")
+              (pprint/pprint state)
+              (println "===========================")
+              (assoc state :next-state :user))
+
+            (= command :model)
+            (let [model-name (second args)
+                  config (utils/read-config! (str "llm-" model-name ".edn"))]
+              (if (some? config)
+                (do
+                  (println "Switching model to: " model-name)
+                  (assoc state :config config :next-state :user))
+                state))
+
+            :else
+            (assoc state :next-state :user)))
+    (assoc state :next-state :llm
+           :history (add-message-to-history history {:role "user" :content input}))))
+#+END_SRC
+
+有了这个函数, 添加新命令就变得很简单了. 我已经添加了用于退出, 清除历史, 生成调试输出和切换模型的命令. 这比旧的只能处理退出命令的循环要好得多. 这也为我们添加更多命令, 比如保存和加载对话, 打下了基础. 我认为这种清晰的状态模式在 Clojure 中很容易实现, 因为它强制程序员使用不可变性. 如果我使用了另一种容易产生突变的编程语言, 我的代码中会到处都是状态改变. 这也使得测试这段代码变得非常容易, 因为输入和输出都是可预测的.
+
+完整的代码清单在[[https://github.com/s-gopale/code-editing-agent/tree/part-9][这里]].
