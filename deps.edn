@@ -35,6 +35,10 @@
 
         org.xerial/sqlite-jdbc {:mvn/version "3.46.0.0"}
 
+        ;; Datomic local (嵌入式 Datomic, 适合本地开发和教学)
+        com.datomic/local {:mvn/version "1.0.291"}
+        com.datomic/client-api {:mvn/version "1.0.76"}
+
         org.mentat/emmy {:mvn/version "0.32.0"}
         org.babashka/sci {:mvn/version "0.10.49"}}
  :aliases
