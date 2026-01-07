@@ -41,7 +41,7 @@
               :user/age     29}
              {:article/title   "Datomic 入门指南"
               :article/content "这是一篇关于 Datomic 的教程..."
-              :article/author  "temp-author"  ;; 引用同事务中的临时 ID
+              :article/author  "temp-author"  ;; 引用同一事务中的临时 ID
               :article/tags    #{"教程" "数据库" "Clojure"}}]})
 
 ;; ### 使用 Lookup Ref

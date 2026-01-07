@@ -44,8 +44,8 @@
 ;; Datalog 查询的基本结构:
 
 ^{::clerk/visibility {:code :hide :result :show}}
-(clerk/code "[:find <返回的变量>
- :in <输入参数>
+(clerk/code "[:find  <返回的变量>
+ :in    <输入参数>
  :where <匹配条件>]")
 
 ;; ## 基础查询

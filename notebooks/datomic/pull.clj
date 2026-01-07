@@ -128,9 +128,10 @@
        :where [?e :category/name "Clojure"]]
      (d/db conn))
 
-;; ## 通配符与排除
+;; ## 通配符扩展
 
-;; ### 获取所有属性但排除某些
+;; ### 获取所有属性并展开引用
+;; 使用通配符 `*` 获取所有属性, 并指定引用属性的展开模式:
 ^{::clerk/visibility {:code :show :result :show}}
 (d/pull (d/db conn)
   '[* {:user/roles [:role/name]}]

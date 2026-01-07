@@ -13,6 +13,7 @@
 (defn create-database!
   "创建一个新数据库, 如果已存在则先删除."
   [db-name]
+  ;; delete-database 在数据库不存在时会返回 false, 不会抛出异常
   (d/delete-database client {:db-name db-name})
   (d/create-database client {:db-name db-name})
   (d/connect client {:db-name db-name}))

@@ -134,16 +134,15 @@
 
 ^{::clerk/visibility {:code :show :result :show}}
 (defn user-audit-log
-  "获取用户的完整修改日志."
+  "获取用户的完整修改日志 (简化版)."
   [db user-lookup]
-  (d/q '[:find ?attr ?old-val ?new-val ?inst
+  (d/q '[:find ?attr ?val ?inst ?added
          :in $ ?user
          :where
          [?e :user/name ?user]
-         [?e ?a ?new-val ?tx true]
+         [?e ?a ?val ?tx ?added]
          [?a :db/ident ?attr]
-         [?tx :db/txInstant ?inst]
-         [(get-else $ ?e ?a nil) ?old-val]]
+         [?tx :db/txInstant ?inst]]
        (d/history db)
        user-lookup))
 
