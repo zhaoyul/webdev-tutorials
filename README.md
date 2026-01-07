@@ -20,6 +20,15 @@
 - 组合/调试：`composability.clj`、`advanced_usage.clj`、`adapters.clj`
 - 深入索引：`deep_dive.clj`、`faq.clj`、`overview.clj`
 
+### Datomic 专题（`notebooks/datomic/`，使用 Datomic Local 内存数据库）
+- 入门：`intro.clj` - Datomic 简介与核心概念
+- Schema：`schema.clj` - Schema 定义与数据建模
+- 事务：`transactions.clj` - 事务与数据写入
+- 查询：`queries.clj` - Datalog 查询基础
+- Pull：`pull.clj` - Pull API 数据提取
+- 历史：`history.clj` - 时间旅行与历史查询
+- 公共模块：`common.clj`、`overview.md`
+
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
 - `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示
