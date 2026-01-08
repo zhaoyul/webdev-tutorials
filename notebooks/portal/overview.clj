@@ -4,10 +4,9 @@
   (:require [nextjournal.clerk :as clerk]
             [portal.api :as p]))
 
-;; # Portal 入门n
+;; # Portal 入门
 
-;; Portal 是一个轻量的数据探查工具, 适合在 REPL 中快速浏览和定位问题.
-;; 本系列笔记会使用 Portal 的 tap> 工作流, 并展示常用视图与自定义展示方式.
+;; Portal 是一个轻量的数据探查工具, 适合在 REPL 中快速浏览和定位问题.n本系列笔记会使用 Portal 的 tap> 工作流, 并展示常用视图与自定义展示方式.
 
 ^{::clerk/visibility {:code :hide :result :show}}
 (clerk/md "## 打开 Portal\n\n下面的函数会打开 Portal 并注册 tap> 目标.\n如果需要指定主题或窗口标题, 可以传入选项, 例如 `{:theme :portal.colors/nord :window-title \"Portal Demo\"}`.")
@@ -25,8 +24,7 @@
      (add-tap #'p/submit)
      portal)))
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "执行 `(open-portal!)` 后, 可以在 Portal 中看到后续的 tap> 数据.\n")
+;; 执行 `(open-portal!)` 后, 可以在 Portal 中看到后续的 tap> 数据.n
 
 ^{::clerk/visibility {:code :show :result :show}}
 (open-portal!)
@@ -36,8 +34,8 @@
        :message "Portal 已接入 tap>"
        :at (java.time.Instant/now)})
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 常用清理\n\n下面是清理和关闭的辅助函数, 需要时再调用即可.")
+
+;; ## 常用清理nn下面是清理和关闭的辅助函数, 需要时再调用即可.
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn clear-portal!
@@ -55,8 +53,12 @@
     (p/close portal)
     (reset! portal-instance nil)))
 
+;; ## 导航
 
-;; ## 下一步nn继续查看以下笔记:
-;; - `tap_flow.clj`: tap> 工作流示例
-;; - `inspect.clj`: 常用视图和过滤
+;; - `tap_flow.clj`: tap> 工作流示例n- `inspect.clj`: 常用视图和过滤
 ;; - `custom_viewers.clj`: 自定义展示与快捷命令
+;; - `advanced_scenarios.clj`: 高级展示场景
+;; - `dashboard_viewer.clj`: 组合仪表盘
+;; - `realtime_dashboard.clj`: 实时监控面板
+;; - `multi_service_dashboard.clj`: 多服务对比
+;; - `multi_service_realtime.clj`: 多服务实时刷新

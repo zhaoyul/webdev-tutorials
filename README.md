@@ -34,6 +34,11 @@
 - tap> 工作流: `tap_flow.clj` - tap> 与流程埋点
 - 常用视图: `inspect.clj` - 表格, 树与 Diff
 - 自定义展示: `custom_viewers.clj` - viewer 与命令面板
+- 高级场景: `advanced_scenarios.clj` - 时间序列, 性能与异常追踪
+- 组合仪表盘: `dashboard_viewer.clj` - 组合视图与轻量监控
+- 实时监控: `realtime_dashboard.clj` - 定时刷新与流式展示
+- 多服务对比: `multi_service_dashboard.clj` - 跨服务指标对比
+- 多服务实时: `multi_service_realtime.clj` - 多服务实时刷新
 
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
