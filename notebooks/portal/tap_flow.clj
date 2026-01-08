@@ -5,8 +5,10 @@
             [portal.api :as p]
             [portal.viewer :as v]))
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "# tap> 工作流\n\n本页展示 tap> 在数据处理链路中的用法.\n建议先在 `portal.overview` 中打开 Portal, 或使用 `ensure-portal!` 自动打开.")
+
+;; # tap> 工作流
+
+;; 本页展示 tap> 在数据处理链路中的用法.n建议先在 `portal.overview` 中打开 Portal, 或使用 `ensure-portal!` 自动打开.
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn ensure-portal!
@@ -19,8 +21,10 @@
 ^{::clerk/visibility {:code :show :result :show}}
 (ensure-portal!)
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 示例数据\n\n我们用一组订单数据, 逐步加工并通过 tap> 输出过程状态.")
+
+;; ## 示例数据
+
+;; 我们用一组订单数据, 逐步加工并通过 tap> 输出过程状态.
 
 ^{::clerk/visibility {:code :show :result :show}}
 (def orders
@@ -54,5 +58,9 @@
 ^{::clerk/visibility {:code :show :result :show}}
 (expensive-orders 50 orders)
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 小结\n\n- `tap>` 适合埋点式输出, 不影响主流程返回值.\n- `portal.viewer/log` 可以让每次输出带上上下文.\n- 当输出过多时, 可使用 `portal.api/clear` 清空面板.")
+
+;; ## 小结
+
+;; - `tap>` 适合埋点式输出, 不影响主流程返回值.
+;; - `portal.viewer/log` 可以让每次输出带上上下文.
+;; - 当输出过多时, 可使用 `portal.api/clear` 清空面板.
