@@ -40,6 +40,13 @@
 - 多服务对比: `multi_service_dashboard.clj` - 跨服务指标对比
 - 多服务实时: `multi_service_realtime.clj` - 多服务实时刷新
 
+### Emmy 专题 (`notebooks/emmy/`, 符号计算与经典力学)
+- 入门: `intro.clj` - Emmy 核心概念与基本用法
+- 符号计算: `symbolic.clj` - 符号表达式与简化
+- 微积分: `calculus.clj` - 自动微分与数值方法
+- 力学: `mechanics.clj` - 拉格朗日与哈密顿力学
+- 公共模块: `common.clj`、`overview.md`
+
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
 - `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示
