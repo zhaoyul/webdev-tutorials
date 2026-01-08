@@ -29,6 +29,12 @@
 - 历史：`history.clj` - 时间旅行与历史查询
 - 公共模块：`common.clj`、`overview.md`
 
+### Portal 工具 (`notebooks/portal/`, 数据可视化与调试)
+- 入门: `overview.clj` - Portal 打开方式与基础配置
+- tap> 工作流: `tap_flow.clj` - tap> 与流程埋点
+- 常用视图: `inspect.clj` - 表格, 树与 Diff
+- 自定义展示: `custom_viewers.clj` - viewer 与命令面板
+
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
 - `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示

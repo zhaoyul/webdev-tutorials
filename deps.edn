@@ -24,6 +24,7 @@
 
         ;; Clerk notebook
         io.github.nextjournal/clerk {:mvn/version "0.18.1158"}
+        djblue/portal {:mvn/version "0.62.1"}
 
         ;; HugSQL & DB
         com.layerware/hugsql {:mvn/version "0.5.3"}
