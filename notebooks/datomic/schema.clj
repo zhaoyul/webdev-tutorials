@@ -134,13 +134,13 @@
 
 ^{::clerk/visibility {:code :show :result :show}}
 (d/transact conn
-  {:tx-data [{:user/username  "alice"
-              :user/email     "alice@example.com"
-              :user/age       28
-              :user/active?   true
-              :user/created-at (java.util.Date.)
-              :user/address   {:address/street "中关村大街1号"
-                               :address/city   "北京"}}]})
+            {:tx-data [{:user/username  "alice"
+                        :user/email     "alice@example.com"
+                        :user/age       28
+                        :user/active?   true
+                        :user/created-at (java.util.Date.)
+                        :user/address   {:address/street "中关村大街1号"
+                                         :address/city   "北京"}}]})
 
 ;; 查询验证:
 ^{::clerk/visibility {:code :show :result :show}}
@@ -159,10 +159,10 @@
 ;; 添加新属性示例:
 ^{::clerk/visibility {:code :show :result :show}}
 (d/transact conn
-  {:tx-data [{:db/ident       :user/phone
-              :db/valueType   :db.type/string
-              :db/cardinality :db.cardinality/one
-              :db/doc         "用户电话 (新增字段)"}]})
+            {:tx-data [{:db/ident       :user/phone
+                        :db/valueType   :db.type/string
+                        :db/cardinality :db.cardinality/one
+                        :db/doc         "用户电话 (新增字段)"}]})
 
 ;; ## 下一步
 ;;
