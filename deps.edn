@@ -35,6 +35,9 @@
         com.h2database/h2 {:mvn/version "2.2.224"}
 
         org.xerial/sqlite-jdbc {:mvn/version "3.46.0.0"}
+        org.suskalo/coffi {:mvn/version "1.0.615"}
+        insn/insn {:mvn/version "0.5.4"}
+
 
         ;; Datomic local (嵌入式 Datomic, 适合本地开发和教学)
         com.datomic/local {:mvn/version "1.0.291"}
