@@ -27,7 +27,7 @@
 - 查询：`queries.clj` - Datalog 查询基础
 - Pull：`pull.clj` - Pull API 数据提取
 - 历史：`history.clj` - 时间旅行与历史查询
-- 公共模块：`common.clj`、`overview.md`
+- 公共模块：`common.clj`
 
 ### Portal 工具 (`notebooks/portal/`, 数据可视化与调试)
 - 入门: `overview.clj` - Portal 打开方式与基础配置
@@ -45,7 +45,7 @@
 - 符号计算: `symbolic.clj` - 符号表达式与简化
 - 微积分: `calculus.clj` - 自动微分与数值方法
 - 力学: `mechanics.clj` - 拉格朗日与哈密顿力学
-- 公共模块: `common.clj`、`overview.md`
+- 公共模块: `common.clj`
 
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor

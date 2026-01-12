@@ -71,28 +71,33 @@
 ^{::clerk/visibility {:code :show :result :show}}
 (d/q '[:find ?name :where [_ :user/name ?name]] db)
 
-;; ### 单个标量值 (`.`)
+;; ### 单个标量值
+;; Datomic Client 返回关系结果, 可用 ffirst 取出单个值.
 ^{::clerk/visibility {:code :show :result :show}}
-(d/q '[:find ?name .
-       :where
-       [?e :user/name ?name]
-       [?e :user/age 28]]
-     db)
+(ffirst (d/q '[:find ?name
+               :where
+               [?e :user/name ?name]
+               [?e :user/age 28]]
+             db))
 
-;; ### 向量的集合 (`[...]`)
+;; ### 向量的集合
+;; Datomic Client 只支持关系返回, 这里用 map 组装成向量.
 ^{::clerk/visibility {:code :show :result :show}}
-(d/q '[:find [?name ...]
-       :where [_ :user/name ?name]]
-     db)
+(vec (map first
+          (d/q '[:find ?name
+                 :where [_ :user/name ?name]]
+               db)))
 
-;; ### 单个元组 (`[...vars]`)
+;; ### 单个元组
+;; 关系结果的第一行就是单个元组.
 ^{::clerk/visibility {:code :show :result :show}}
-(d/q '[:find [?name ?age]
-       :where
-       [?e :user/name ?name]
-       [?e :user/age ?age]
-       [(= ?name "张三")]]
-     db)
+(first
+  (d/q '[:find ?name ?age
+         :where
+         [?e :user/name ?name]
+         [?e :user/age ?age]
+         [(= ?name "张三")]]
+       db))
 
 ;; ## 参数化查询 (:in)
 

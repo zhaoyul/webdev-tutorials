@@ -61,10 +61,15 @@
 (let [now (java.util.Date.)
       past (java.util.Date. (- (.getTime now) 60000))  ;; 1分钟前
       db-past (d/as-of (d/db conn) past)]
-  {:now-age (d/q '[:find ?age . :where [?e :user/name "张三"] [?e :user/age ?age]]
-                 (d/db conn))
-   :past-exists? (boolean (d/q '[:find ?e . :where [?e :user/name "张三"]]
-                               db-past))})
+  {:now-age (ffirst (d/q '[:find ?age
+                           :where
+                           [?e :user/name "张三"]
+                           [?e :user/age ?age]]
+                         (d/db conn)))
+   :past-exists? (boolean (ffirst (d/q '[:find ?e
+                                         :where
+                                         [?e :user/name "张三"]]
+                                       db-past)))})
 
 ;; ## 历史数据库: history
 
@@ -152,17 +157,17 @@
 
 ;; 假设要恢复张三的旧邮箱:
 ^{::clerk/visibility {:code :show :result :show}}
-(let [old-email (d/q '[:find ?email .
-                       :where
-                       [?e :user/name "张三"]
-                       [?e :user/email ?email]]
-                     t0)]
+(let [old-email (ffirst (d/q '[:find ?email
+                               :where
+                               [?e :user/name "张三"]
+                               [?e :user/email ?email]]
+                             t0))]
   {:old-email old-email
-   :current-email (d/q '[:find ?email .
-                         :where
-                         [?e :user/name "张三"]
-                         [?e :user/email ?email]]
-                       (d/db conn))})
+   :current-email (ffirst (d/q '[:find ?email
+                                 :where
+                                 [?e :user/name "张三"]
+                                 [?e :user/email ?email]]
+                               (d/db conn)))})
 
 ;; 恢复操作只需要一个事务:
 ^{::clerk/visibility {:code :show :result :show}}

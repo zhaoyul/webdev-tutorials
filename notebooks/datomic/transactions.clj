@@ -70,13 +70,19 @@
 
 ;; ### 撤回单个属性值
 ^{::clerk/visibility {:code :show :result :show}}
-(let [zhangsan-id (d/q '[:find ?e . :where [?e :user/name "张三"]] (d/db conn))]
+(let [zhangsan-id (ffirst (d/q '[:find ?e
+                                 :where
+                                 [?e :user/name "张三"]]
+                               (d/db conn)))]
   (d/transact conn
     {:tx-data [[:db/retract zhangsan-id :user/email "zhangsan@example.com"]]}))
 
 ;; ### 撤回实体的所有属性
 ^{::clerk/visibility {:code :show :result :show}}
-(let [zhaoliu-id (d/q '[:find ?e . :where [?e :user/name "赵六"]] (d/db conn))]
+(let [zhaoliu-id (ffirst (d/q '[:find ?e
+                                :where
+                                [?e :user/name "赵六"]]
+                              (d/db conn)))]
   (d/transact conn
     {:tx-data [[:db/retractEntity zhaoliu-id]]}))
 
@@ -154,7 +160,10 @@
 
 ;; Datomic 使用乐观并发控制。如果需要条件更新, 可以使用 `:db/cas`:
 ^{::clerk/visibility {:code :show :result :show}}
-(let [lisi-id (d/q '[:find ?e . :where [?e :user/name "李四"]] (d/db conn))]
+(let [lisi-id (ffirst (d/q '[:find ?e
+                             :where
+                             [?e :user/name "李四"]]
+                           (d/db conn)))]
   (d/transact conn
     {:tx-data [[:db/cas lisi-id :user/age 33 34]]}))  ;; 只有当前值是 33 时才更新为 34
 
