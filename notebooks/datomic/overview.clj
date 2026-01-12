@@ -31,6 +31,7 @@
 ;; - [pull.clj](pull.clj) - Pull API 数据提取
 ;; - [history.clj](history.clj) - 时间旅行与历史查询
 ;; - [keynote_time_travel.clj](keynote_time_travel.clj) - 时间旅行 Keynote 演示
+;; - [local_persistence.clj](local_persistence.clj) - Datomic Local 持久化
 ;;
 ;; ## 支撑模块
 ;; - [common.clj](common.clj) - 公共初始化与辅助函数
