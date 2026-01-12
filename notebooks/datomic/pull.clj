@@ -31,8 +31,11 @@
               :db/cardinality :db.cardinality/one}
              {:db/ident       :address/street
               :db/valueType   :db.type/string
-              :db/cardinality :db.cardinality/one}
-             ;; 更新用户数据
+              :db/cardinality :db.cardinality/one}]})
+
+^{::clerk/visibility {:code :show :result :hide}}
+(d/transact conn
+  {:tx-data [;; 更新用户数据
              {:user/name    "张三"
               :user/address {:address/city   "北京"
                              :address/street "中关村大街1号"}}
@@ -106,8 +109,11 @@
               :db/cardinality :db.cardinality/one}
              {:db/ident       :category/parent
               :db/valueType   :db.type/ref
-              :db/cardinality :db.cardinality/one}
-             {:db/id           "cat-tech"
+              :db/cardinality :db.cardinality/one}]})
+
+^{::clerk/visibility {:code :show :result :hide}}
+(d/transact conn
+  {:tx-data [{:db/id           "cat-tech"
               :category/name   "技术"}
              {:db/id           "cat-prog"
               :category/name   "编程"
@@ -137,16 +143,19 @@
   '[* {:user/roles [:role/name]}]
   [:user/name "张三"])
 
-;; ## 批量 Pull (pull-many)
+;; ## 批量 Pull
 
 ;; 对多个实体执行相同的 pull 模式:
+;; Datomic Client 没有 pull-many, 用 mapv + pull 实现.
+;; Datomic Client 返回关系结果, 用 mapv first 组装 id 列表.
 ^{::clerk/visibility {:code :show :result :show}}
-(let [user-ids (d/q '[:find [?e ...]
-                      :where [?e :user/name]]
-                    (d/db conn))]
-  (d/pull-many (d/db conn)
-    '[:user/name :user/age]
-    user-ids))
+(let [db (d/db conn)
+      user-ids (mapv first
+                     (d/q '[:find ?e
+                            :where [?e :user/name]]
+                          db))]
+  (mapv #(d/pull db '[:user/name :user/age] %)
+        user-ids))
 
 ;; ## 在查询中使用 Pull
 
