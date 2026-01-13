@@ -1,4 +1,4 @@
-;; # Clojure core.async/flow 全面体验笔记
+;; # clojure core.async/flow 全面体验笔记
 ^{:nextjournal.clerk/visibility {:code :hide}
   :nextjournal.clerk/toc true}
 (ns core-async-flow

@@ -72,9 +72,8 @@
 ;; 示例:
 ^{::clerk/visibility {:code :show :result :show}}
 (render (expt (+ 'a 'b) 2))
-
-^{::clerk/visibility {:code :show :result :show}}
 (render-tex (expt (+ 'a 'b) 2))
+(clerk/tex (render-tex (expt (+ 'a 'b) 2)))
 
 ;; ## 三角函数
 
@@ -193,7 +192,8 @@ euler-formula
   (simplify (expr 'a)))
 
 ^{::clerk/visibility {:code :show :result :show}}
-(clerk/tex (((exp D) (literal-function 'f)) 'x))
+(mapv (comp clerk/tex render-tex) (take 5 (((exp D) (literal-function 'f)) 'x)))
+
 
 
 

@@ -213,6 +213,13 @@ exact-derivative
 ^{::clerk/visibility {:code :show :result :show}}
 (take 8 (seq (((exp D) sin) 0)))
 
+^{::clerk/visibility {:code :hide :result :show}}
+(clerk/md "
+注意: `exp D` 表示形式幂级数. 对 `literal-function` 直接求值会触发无限展开,
+在 Clerk 中容易卡死. 这行写法请不要执行: `(((exp D) (literal-function 'f)) 'x)`。
+如果需要可计算的结果, 建议用 `take` 截断或改用有限阶的 `(expt D n)`。
+")
+
 ;; ## 实用示例
 
 ;; ### 物理: 自由落体
@@ -244,6 +251,7 @@ exact-derivative
 ;; 二阶导数 (判断极值类型):
 ^{::clerk/visibility {:code :show :result :show}}
 (render (((expt D 2) cubic) 'x))
+
 
 ;; ## 下一步
 
