@@ -2,7 +2,11 @@
 (ns emmy.mechanics
   "Emmy 力学: 拉格朗日与哈密顿力学."
   (:require [nextjournal.clerk :as clerk]
-            [emmy.env :as e :refer :all]))
+            [emmy.env :as e
+             :refer :all
+             :rename {Lagrangian->energy env-lagrangian->energy
+                     momentum env-momentum
+                     Lagrangian->Hamiltonian env-lagrangian->hamiltonian}]))
 
 ;; # 经典力学
 ;;
@@ -136,31 +140,35 @@ L-free
 
 ;; ## 守恒量
 
+;; ### 动量
+^{::clerk/visibility {:code :show :result :show}}
+(defn lagrangian-momentum
+  "教学用动量函数, p = ∂L/∂q̇."
+  [L]
+  (fn [state]
+    (((partial 2) L) state)))
+
+((lagrangian-momentum (L-free-particle 'm)) (up 't 'x 'v))
+
 ;; ### 能量守恒
 ;;
 ;; 能量函数 E = p·qdot - L
 
 ^{::clerk/visibility {:code :show :result :show}}
-(defn Lagrangian->energy [L]
+(defn lagrangian->energy
+  "教学用能量函数, 以拉格朗日量为输入."
+  [L]
   (fn [state]
     (let [[_ _ qdot] state]
-      (- (* (momentum L state) qdot)
+      (- (* ((lagrangian-momentum L) state) qdot)
          (L state)))))
 
 ;; 自由粒子的能量:
 ^{::clerk/visibility {:code :show :result :show}}
 (def energy-free
-  (Lagrangian->energy (L-free-particle 'm)))
+  (lagrangian->energy (L-free-particle 'm)))
 
-((energy-free) (up 't 'x 'v))
-
-;; ### 动量
-^{::clerk/visibility {:code :show :result :show}}
-(defn momentum [L]
-  (fn [state]
-    (((partial 2) L) state)))
-
-((momentum (L-free-particle 'm)) (up 't 'x 'v))
+(energy-free (up 't 'x 'v))
 
 ;; ## 哈密顿力学
 
@@ -174,7 +182,7 @@ L-free
     (let [state-path (fn [qdot] (up t q qdot))]
       ;; 简化版本: 假设 p = m*v, 即 v = p/m
       ;; 完整实现需要求解 p = dL/dqdot 得到 qdot
-      (Lagrangian->energy L))))
+      (lagrangian->energy L))))
 
 ;; ### 哈密顿量示例
 
@@ -249,7 +257,7 @@ L-free
          ["欧拉-拉格朗日方程" "d/dt(∂L/∂q̇) - ∂L/∂q = 0" "Lagrange-equations"]
          ["哈密顿量" "H(t,q,p) = p·q̇ - L" "Lagrangian->Hamiltonian"]
          ["哈密顿方程" "q̇ = ∂H/∂p, ṗ = -∂H/∂q" "Hamilton-equations"]
-         ["动量" "p = ∂L/∂q̇" "momentum"]]})
+         ["动量" "p = ∂L/∂q̇" "lagrangian-momentum"]]})
 
 ;; ## 参考资料
 
