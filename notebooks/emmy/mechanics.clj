@@ -24,6 +24,20 @@
 (def state (up 't (up 'x 'y) (up 'vx 'vy)))
 state
 
+^{::clerk/visibility {:code :hide :result :show}}
+(clerk/md "
+### up 与 down 对照
+
+up 表示上标向量, down 表示下标协向量. 在 Emmy 中显式区分它们,
+可以避免把梯度和速度混用。
+
+| 结构 | 含义 | 典型对象 | 例子 |
+| --- | --- | --- | --- |
+| up | 向量, 上标分量 | 位置, 速度, 状态 | `(up t q qdot)` |
+| down | 协向量, 下标分量 | 梯度, 动量, 一形式 | `(down p0 p1)` |
+| up ↔ down | 度量升降指标 | 从速度到动量 | `(down (* m v))` |
+")
+
 ;; ### 拉格朗日量
 
 ;; 拉格朗日量 L = T - V (动能减势能)
@@ -64,7 +78,7 @@ L-free
 ^{::clerk/visibility {:code :show :result :show}}
 (def q (literal-function 'q))
 
-((eom q) 't)
+(render ((eom q) 't))
 
 ;; 这给出自由粒子的运动方程: m * d²q/dt² = 0
 
