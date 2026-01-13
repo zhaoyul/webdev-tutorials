@@ -15,16 +15,16 @@
 
 ;; 使用 quote 创建符号:
 ^{::clerk/visibility {:code :show :result :show}}
-(def x 'x)
-(def y 'y)
-(def z 'z)
+'x
+'y
+'z
 
 ;; 符号被视为抽象复数, 可以参与所有数学运算:
 ^{::clerk/visibility {:code :show :result :show}}
-(+ x y z)
+(+ 'x 'y 'z)
 
 ^{::clerk/visibility {:code :show :result :show}}
-(* x (+ y 1))
+(* 'x (+ 'y 1))
 
 ;; ### 代数表达式
 
@@ -32,7 +32,6 @@
 ^{::clerk/visibility {:code :show :result :show}}
 (def polynomial
   (+ (expt 'x 3) (* 2 (expt 'x 2)) (* -1 'x) 1))
-polynomial
 
 ;; 使用 `->infix` 显示为人类可读格式:
 ^{::clerk/visibility {:code :show :result :show}}
@@ -40,7 +39,7 @@ polynomial
 
 ;; 使用 `->TeX` 生成 TeX 格式:
 ^{::clerk/visibility {:code :show :result :show}}
-(->TeX polynomial)
+(clerk/tex (->TeX polynomial))
 
 ;; ## 表达式简化
 

@@ -35,6 +35,14 @@ Emmy 是一个 Clojure/ClojureScript 实现的计算机代数系统, 基于 MIT 
   - 哈密顿量与哈密顿方程
   - 守恒量
 
+### 交互与可视化
+- **[interactive_demos.clj](interactive_demos.clj)** - MathBox 与第三方组件集成
+  - MathBox 3D 曲线
+  - ECharts 交互式曲线
+- **[talk_recap.clj](talk_recap.clj)** - 演讲示例复盘与 MathBox 交互
+  - 泰勒级数与双摆混沌
+  - 势阱能量交换与环面轨迹
+
 ## 快速开始
 
 ```clojure
