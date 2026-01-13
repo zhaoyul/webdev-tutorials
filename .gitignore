@@ -28,5 +28,7 @@
 /checkouts
 /classes
 /target
+/node_modules
 /.clerk/
 /.clj-kondo/
+/.shadow-cljs/

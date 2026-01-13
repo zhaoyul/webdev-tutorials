@@ -1,0 +1,21 @@
+(ns mathbox.sci-extensions
+  (:require [leva.sci]
+            ["three" :as three]
+            [mathbox.sci]
+            [mathbox.examples.test.face]
+            [sci.ctx-store]
+            [sci.core :as sci]))
+
+;; ## SCI 自定义
+
+(leva.sci/install!)
+(mathbox.sci/install!)
+
+(sci.ctx-store/swap-ctx!
+ sci/merge-opts
+ {:classes {'Math js/Math}
+  :js-libs {"three" three}
+  :namespaces
+  {'mathbox.examples.test.face
+   (sci/copy-ns mathbox.examples.test.face
+                (sci/create-ns 'mathbox.examples.test.face))}})

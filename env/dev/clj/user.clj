@@ -7,7 +7,12 @@
    [clojure.repl :refer [doc source find-doc apropos dir]]
    [lambdaisland.classpath.watch-deps :as watch-deps]
    [clojure.tools.namespace.repl :refer [refresh]]
+   [mentat.clerk-utils.build :as clerk-build]
+   [mentat.clerk-utils.css :as clerk-css]
    [nextjournal.clerk :as clerk]))
+
+(clerk-css/set-css!
+ "https://unpkg.com/mathbox@2.3.1/build/mathbox.css")
 
 (defonce ^:private clerk-server (atom nil))
 (defonce ^:private watcher (atom nil))
@@ -30,23 +35,26 @@
   opts 可自定义 :watch-paths :port :browse? 等 Clerk 选项."
   ([] (start-clerk! {:watch-paths ["notebooks"]
                      :browse? false
-                     :port 7777}))
+                     :port 7777
+                     :cljs-namespaces '[mathbox.sci-extensions]}))
   ([opts]
    (when @clerk-server
      (stop-clerk!))
-   (let [server (clerk/serve! opts)]
+   (let [defaults {:watch-paths ["notebooks"]
+                   :browse? false
+                   :port 7777
+                   :cljs-namespaces '[mathbox.sci-extensions]}
+         final-opts (merge defaults opts)
+         server (clerk-build/serve! final-opts)]
      (reset! clerk-server server)
-     (println "Clerk 已启动, 监听端口" (:port opts))
+     (println "Clerk 已启动, 监听端口" (:port final-opts))
      server)))
 
 (defn stop-clerk!
   "停止 Clerk 服务与 watch."
   []
   (when @clerk-server
-    (if-let [halt (resolve 'nextjournal.clerk/halt!)]
-      (halt)
-      (when-let [stop-fn (:stop-fn @clerk-server)]
-        (stop-fn)))
+    (clerk-build/halt!)
     (reset! clerk-server nil)
     (println "Clerk 已停止.")))
 
@@ -59,9 +67,10 @@
   "构建静态 notebook 页面, 默认输出到 public 目录.
   参数可传 {:paths [..] :out-path \"public\"} 自定义."
   ([] (publish-notebooks {:paths ["notebooks"]
-                          :out-path "public"}))
+                          :out-path "public"
+                          :cljs-namespaces '[mathbox.sci-extensions]}))
   ([opts]
-   (clerk/build! opts)
+   (clerk-build/build! opts)
    (println "Clerk build 完成:" opts)))
 
 (defn start-watch!
