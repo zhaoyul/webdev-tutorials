@@ -192,6 +192,12 @@ euler-formula
 (let [expr (fn [x] (+ (square x) (* 2 x) 1))]
   (simplify (expr 'a)))
 
+^{::clerk/visibility {:code :show :result :show}}
+(clerk/tex (((exp D) (literal-function 'f)) 'x))
+
+
+
+
 ;; ## 下一步
 
 ;; 继续阅读:

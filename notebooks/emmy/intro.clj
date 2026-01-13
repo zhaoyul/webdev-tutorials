@@ -1,4 +1,4 @@
-^{:nextjournal.clerk/visibility {:code :hide}}
+^#:nextjournal.clerk{:visibility {:code :hide} :toc true}
 (ns emmy.intro
   "Emmy 入门: 核心概念与基本用法."
   (:require [nextjournal.clerk :as clerk]
