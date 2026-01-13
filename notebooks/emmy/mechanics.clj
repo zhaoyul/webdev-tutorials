@@ -2,11 +2,12 @@
 (ns emmy.mechanics
   "Emmy 力学: 拉格朗日与哈密顿力学."
   (:require [nextjournal.clerk :as clerk]
+            [emmy.common :refer [render-tex render]]
             [emmy.env :as e
              :refer :all
              :rename {Lagrangian->energy env-lagrangian->energy
-                     momentum env-momentum
-                     Lagrangian->Hamiltonian env-lagrangian->hamiltonian}]))
+                      momentum env-momentum
+                      Lagrangian->Hamiltonian env-lagrangian->hamiltonian}]))
 
 ;; # 经典力学
 ;;
@@ -22,7 +23,7 @@
 
 ^{::clerk/visibility {:code :show :result :show}}
 (def state (up 't (up 'x 'y) (up 'vx 'vy)))
-state
+(clerk/tex (render-tex state))
 
 ^{::clerk/visibility {:code :hide :result :show}}
 (clerk/md "
@@ -51,7 +52,7 @@ up 表示上标向量, down 表示下标协向量. 在 Emmy 中显式区分它�
 ;; 应用到符号状态:
 ^{::clerk/visibility {:code :show :result :show}}
 (def L-free ((L-free-particle 'm) (up 't 'x 'v)))
-L-free
+(clerk/tex (render-tex L-free))
 
 ;; ### 带势能的粒子
 ^{::clerk/visibility {:code :show :result :show}}
@@ -62,12 +63,7 @@ L-free
 
 ;; ## 欧拉-拉格朗日方程
 
-;; ### 渲染辅助函数
-^{::clerk/visibility {:code :show :result :show}}
-(defn render [expr]
-  (-> expr simplify ->infix))
-
-;; ### Lagrange-equations
+;; ### lagrange-equations
 
 ;; Emmy 提供 `Lagrange-equations` 来生成运动方程:
 ^{::clerk/visibility {:code :show :result :show}}
@@ -78,7 +74,7 @@ L-free
 ^{::clerk/visibility {:code :show :result :show}}
 (def q (literal-function 'q))
 
-(render ((eom q) 't))
+(clerk/tex (render-tex ((eom q) 't)))
 
 ;; 这给出自由粒子的运动方程: m * d²q/dt² = 0
 
@@ -101,7 +97,7 @@ L-free
 ^{::clerk/visibility {:code :show :result :show}}
 (def x (literal-function 'x))
 
-(render ((harmonic-eom x) 't))
+(clerk/tex (render-tex ((harmonic-eom x) 't)))
 
 ;; 这给出简谐振子方程: m * d²x/dt² + k*x = 0
 
@@ -131,7 +127,7 @@ L-free
 (def r (literal-function 'r))
 (def theta (literal-function 'theta))
 
-(render ((central-eom (up r theta)) 't))
+(clerk/tex (render-tex ((central-eom (up r theta)) 't)))
 
 ;; ### 3. 单摆
 ;;
@@ -150,7 +146,7 @@ L-free
 ^{::clerk/visibility {:code :show :result :show}}
 (def theta-path (literal-function 'theta))
 
-(render ((pendulum-eom theta-path) 't))
+(clerk/tex (render-tex ((pendulum-eom theta-path) 't)))
 
 ;; ## 守恒量
 
@@ -162,7 +158,7 @@ L-free
   (fn [state]
     (((partial 2) L) state)))
 
-((lagrangian-momentum (L-free-particle 'm)) (up 't 'x 'v))
+(clerk/tex (render-tex ((lagrangian-momentum (L-free-particle 'm)) (up 't 'x 'v))))
 
 ;; ### 能量守恒
 ;;
@@ -182,7 +178,7 @@ L-free
 (def energy-free
   (lagrangian->energy (L-free-particle 'm)))
 
-(energy-free (up 't 'x 'v))
+(clerk/tex (render-tex (energy-free (up 't 'x 'v))))
 
 ;; ## 哈密顿力学
 
@@ -215,7 +211,7 @@ L-free
     (+ (/ (square p) (* 2 m))
        (* (/ 1 2) k (square x)))))
 
-((H-harmonic 'm 'k) (up 't 'x 'p))
+(clerk/tex (render-tex ((H-harmonic 'm 'k) (up 't 'x 'p))))
 
 ;; ### 哈密顿方程
 ^{::clerk/visibility {:code :show :result :show}}
@@ -226,7 +222,7 @@ L-free
 (def x-path (literal-function 'x))
 (def p-path (literal-function 'p))
 
-((harmonic-hamilton-eom x-path p-path) 't)
+(clerk/tex (render-tex ((harmonic-hamilton-eom x-path p-path) 't)))
 
 ;; ## 相空间
 
