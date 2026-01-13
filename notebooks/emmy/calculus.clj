@@ -144,7 +144,13 @@
 ^{::clerk/visibility {:code :show :result :show}}
 (def G (literal-function 'G '(-> (X Real Real) Real)))
 
-((D G) (up 'x 'y))
+^{::clerk/visibility {:code :show :result :show}}
+(defn G->vector
+  "把多元抽象函数包装成向量输入, 便于 D 计算梯度。"
+  [[x y]]
+  (G x y))
+
+((D G->vector) (up 'x 'y))
 
 ;; ## 数值微分
 
