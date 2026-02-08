@@ -10,6 +10,7 @@
 - `adding_simple_middleware.clj`：自定义中间件与顺序示例
 - `demonstrating_middleware_functionality.clj`：中间件链路观测
 - `muuntaja_content_negotiation.clj`：Muuntaja 内容协商
+- `transit_deep_dive.clj`：Transit 数据格式深度解析与对比
 - `malli_spec_usage.clj`：Malli Schema 校验
 - `adding_swagger_support.clj`：Reitit + Swagger 文档
 
