@@ -53,7 +53,10 @@
         com.datomic/local {:mvn/version "1.0.291"}
 
         org.mentat/emmy {:mvn/version "0.32.0"}
-        org.babashka/sci {:mvn/version "0.10.49"}}
+        org.babashka/sci {:mvn/version "0.10.49"}
+
+        ;; ZeroMQ (JeroMQ) convenience wrapper
+        io.djy/ezzmq {:mvn/version "0.8.2"}}
  :aliases
  {:build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
           :ns-default build}
