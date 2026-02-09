@@ -167,11 +167,15 @@
                      (set? x) (vec x)
                      :else x))
                  cache-demo))]
-  {:sizes {:transit-json-bytes (count (.getBytes transit-json StandardCharsets/UTF_8))
-           :transit-json-verbose-bytes (count (.getBytes transit-json-verbose StandardCharsets/UTF_8))
-           :edn-bytes (count (.getBytes edn-str StandardCharsets/UTF_8))
-           :json-bytes (count (.getBytes json-str StandardCharsets/UTF_8))}
-   :transit-json-sample (subs transit-json 0 (min 420 (count transit-json)))})
+  (let [cache-codes (re-seq #"\\^[0-9A-Za-z]" transit-json)]
+    {:sizes {:transit-json-bytes (count (.getBytes transit-json StandardCharsets/UTF_8))
+             :transit-json-verbose-bytes (count (.getBytes transit-json-verbose StandardCharsets/UTF_8))
+             :edn-bytes (count (.getBytes edn-str StandardCharsets/UTF_8))
+             :json-bytes (count (.getBytes json-str StandardCharsets/UTF_8))}
+     :cache {:total (count cache-codes)
+             :distinct (count (set cache-codes))
+             :sample (vec (take 12 (distinct cache-codes)))}
+     :transit-json-sample (subs transit-json 0 (min 420 (count transit-json)))}))
 
 ;; 上面的 `:transit-json-sample` 里通常能看到 `^` 缓存码, 也能看到 `~:` 关键字标签. 这解释了为什么 Transit 在重复 key 很多的 API 响应里, 往往比纯 JSON 更紧凑.
 

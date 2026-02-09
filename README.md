@@ -12,6 +12,7 @@
 - `muuntaja_content_negotiation.clj`：Muuntaja 内容协商
 - `transit_deep_dive.clj`：Transit 数据格式深度解析与对比
 - `ezzmq_complete_test_scenario.clj`：ezzmq(ZeroMQ) 端到端测试场景
+- `zmq_message_flow_visualization.clj`：ZeroMQ 消息流转可视化页面
 - `malli_spec_usage.clj`：Malli Schema 校验
 - `adding_swagger_support.clj`：Reitit + Swagger 文档
 
@@ -60,16 +61,16 @@
 - `chinook.db`：示例 SQLite 数据库（用于 Clerk/HugSQL 查询演示）
 
 ## 使用指南
-- 启动 Clerk 浏览笔记（默认 http://localhost:7777）：  
+- 启动 Clerk 浏览笔记（默认 http://localhost:7777）：
   ```sh
   clojure -M:clerk
-  ```  
+  ```
   或在 `:dev` REPL 中使用 `(user/start-clerk!)`、`(user/show-notebook \"notebooks/web_dev/starting_web_server.clj\")`。
-- 构建静态笔记（使用 `notebooks/*`，默认索引 `notebooks/hugsql/overview.clj`）：  
+- 构建静态笔记（使用 `notebooks/*`，默认索引 `notebooks/hugsql/overview.clj`）：
   ```sh
   clojure -M:nextjournal/clerk
   ```
-- 测试与 CI/uberjar：  
+- 测试与 CI/uberjar：
   ```sh
   clojure -T:build test
   clojure -T:build ci
