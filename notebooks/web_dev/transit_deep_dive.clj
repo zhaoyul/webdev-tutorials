@@ -242,4 +242,6 @@
 ;; 在本项目的 Web 教程里, `Muuntaja` 已经默认支持 Transit.
 
 ;; - 生产使用一般选 `application/transit+json` 或 `application/transit+msgpack`\
-;; - 调试时可以用 `:json-verbose` 直观看到更多标签信息\n\n如果你正在做内容协商, 可以对照 `notebooks/web_dev/muuntaja_content_negotiation.clj` 里对 `application/transit+json` 的示例.
+;; - 调试时可以用 `:json-verbose` 直观看到更多标签信息
+
+;; 如果你正在做内容协商, 可以对照 `notebooks/web_dev/muuntaja_content_negotiation.clj` 里对 `application/transit+json` 的示例.
