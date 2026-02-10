@@ -11,7 +11,8 @@
            [java.nio.charset StandardCharsets]
            [java.util Base64 Date UUID]))
 
-;; 本页面面向对 Transit 不熟悉, 但需要和 Clojure/ClojureScript 或多语言服务打交道的同事. 目标是把 Transit 的线上表示讲清楚, 并给出能直接跑的编码, 解码, 以及与 JSON/EDN 的对比示例.
+;; 本页面面向对 Transit 不熟悉, 但需要和 Clojure/ClojureScript 或多语言服务打交道的同事.
+;; 目标是把 Transit 的线上表示讲清楚, 并给出能直接跑的编码, 解码, 以及与 JSON/EDN 的对比示例.
 
 ;; ## 1. Transit 是什么, 它解决了什么问题
 
