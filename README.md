@@ -11,6 +11,7 @@
 - `demonstrating_middleware_functionality.clj`：中间件链路观测
 - `muuntaja_content_negotiation.clj`：Muuntaja 内容协商
 - `transit_deep_dive.clj`：Transit 数据格式深度解析与对比
+- `kit_aero_integrant.clj`：Kit 风格的 Aero 集中配置与 Integrant 系统状态组件化实践
 - `ezzmq_complete_test_scenario.clj`：ezzmq(ZeroMQ) 端到端测试场景
 - `zmq_message_flow_visualization.clj`：ZeroMQ 消息流转可视化页面
 - `malli_spec_usage.clj`：Malli Schema 校验
