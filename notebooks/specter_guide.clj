@@ -8,18 +8,16 @@
    [com.rpl.specter :as sp]
    [nextjournal.clerk :as clerk]))
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "# Clojure Specter 完全指南: 像手术刀一样精准地操作数据
+;; # Clojure Specter 完全指南: 像手术刀一样精准地操作数据
 
-这份 Clerk notebook 走一条很明确的路线: 先让你感受到 `update-in` 在复杂嵌套与批量修改场景下的痛点, 再用 Specter 的 DSL(路径即程序)把同一类问题写到可读、可组合、可维护。
-
-贯穿全文的核心场景是一份电商系统快照 `world-state`, 递归部分使用一个文件系统/分类树作为辅助场景。
-
-阅读与运行方式:
-
-- 浏览器启动 Clerk: `clojure -M:clerk`
-- 需要跑性能基准时, 建议用 `clojure -M:dev:clerk` 或在 `:dev` REPL 中手动调用文末的基准函数(默认不自动执行, 避免 notebook 变慢)。")
+;; 这份 Clerk notebook 走一条很明确的路线: 先让你感受到 `update-in` 在复杂嵌套与批量修改场景下的痛点, 再用 Specter 的 DSL(路径即程序)把同一类问题写到可读、可组合、可维护。
+;;
+;; 贯穿全文的核心场景是一份电商系统快照 `world-state`, 递归部分使用一个文件系统/分类树作为辅助场景。
+;;
+;; 阅读与运行方式:
+;;
+;; - 浏览器启动 Clerk: `clojure -M:clerk`
+;; - 需要跑性能基准时, 建议用 `clojure -M:dev:clerk` 或在 `:dev` REPL 中手动调用文末的基准函数(默认不自动执行, 避免 notebook 变慢)。
 
 ;; ------------------------------------------------------------
 ;; 核心场景数据
@@ -29,7 +27,7 @@
 (def world-state
   "场景: 一个复杂的电商订单系统快照.
 
-注意: 为了把重点放在导航与变换上, 这里的金额使用了简单整数(不区分元/分)。"
+  注意: 为了把重点放在导航与变换上, 这里的金额使用了简单整数(不区分元/分)。"
   {:users
    {"user-1" {:profile {:name "Alice" :credits 100}
               :orders [{:id 101
@@ -44,20 +42,18 @@
    :inventory {"p1" {:stock 5}
                "p2" {:stock 0}}})
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "下面的几个例子会频繁用到同一个任务:
 
-> 给所有 `:pending` 状态订单中的 `:sale` 商品价格打 9 折
-
-为了避免引入浮点误差, 示例用 `(* price 9/10)` 这种有理数折扣(在价格是 10 的倍数时结果是整数)。")
+;; 下面的几个例子会频繁用到同一个任务:
+;;
+;; > 给所有 `:pending` 状态订单中的 `:sale` 商品价格打 9 折
+;;
+;; 为了避免引入浮点误差, 示例用 `(* price 9/10)` 这种有理数折扣(在价格是 10 的倍数时结果是整数)。
 
 ;; ------------------------------------------------------------
 ;; 第一部分: 困境与破局
 ;; ------------------------------------------------------------
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 1.1 标准库的极限: 能写, 但不想维护")
+;; ## 1.1 标准库的极限: 能写, 但不想维护
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn discount-pending-sale-vanilla
@@ -97,17 +93,15 @@
   {:before before
    :after after})
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 1.2 Specter 的哲学: 路径即程序")
+;; ## 1.2 Specter 的哲学: 路径即程序
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "Specter 不是一个“更强的 get-in/update-in”, 它更像是一种用于**导航数据结构**的 DSL:
 
-- `select`: 选择(查询)路径命中的所有位置
-- `transform`: 变换路径命中的所有位置, 得到一个新结构(持久化数据结构, 原结构不变)
-
-关键差异在于: **条件、遍历、结构导航都可以写进路径里**, 从而把“怎么走到那里”和“到了之后怎么改”分开。")
+;; Specter 不是一个“更强的 get-in/update-in”, 它更像是一种用于**导航数据结构**的 DSL:
+;;
+;; - `select`: 选择(查询)路径命中的所有位置
+;; - `transform`: 变换路径命中的所有位置, 得到一个新结构(持久化数据结构, 原结构不变)
+;;
+;; 关键差异在于: **条件、遍历、结构导航都可以写进路径里**, 从而把“怎么走到那里”和“到了之后怎么改”分开。
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn discount-pending-sale-specter
@@ -134,18 +128,17 @@
 ;; 第二部分: 核心导航器详解
 ;; ------------------------------------------------------------
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 2.1 基础导航: 在 Map 与 Sequence 中移动")
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "最常用的一组“结构导航器”:
+;; ## 2.1 基础导航: 在 Map 与 Sequence 中移动
 
-- `ALL`: 遍历序列的每个元素(对 map 来说, 会遍历 entry `[k v]`)
-- `MAP-VALS`, `MAP-KEYS`: 遍历 map 的值/键
-- `FIRST`, `LAST`: 选择序列首/尾元素(对 entry 也适用)
 
-下面用 `world-state` 做几个很短的例子。")
+;; 最常用的一组“结构导航器”:
+;;
+;; - `ALL`: 遍历序列的每个元素(对 map 来说, 会遍历 entry `[k v]`)
+;; - `MAP-VALS`, `MAP-KEYS`: 遍历 map 的值/键
+;; - `FIRST`, `LAST`: 选择序列首/尾元素(对 entry 也适用)
+;;
+;; 下面用 `world-state` 做几个很短的例子。
 
 ^{::clerk/visibility {:code :show :result :show}}
 {:user-ids (sp/select [:users sp/MAP-KEYS] world-state)
@@ -156,18 +149,17 @@
   {:before (sp/select [:users sp/MAP-VALS :profile :credits] world-state)
    :after (sp/select [:users sp/MAP-VALS :profile :credits] world')})
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 2.2 精准打击: 过滤与子集")
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "Specter 把“过滤条件”也当作路径的一部分. 你可以用:
+;; ## 2.2 精准打击: 过滤与子集
 
-- 直接把 predicate(例如 `even?`, `keyword?`, 或匿名函数)写进路径
-- `selected?`: 如果某个子路径能选到东西, 就保留当前元素
-- `filterer`: 在路径内部对当前序列做过滤视图, 继续向下导航
 
-这会让代码看起来更像是一个声明式查询/更新。")
+;; Specter 把“过滤条件”也当作路径的一部分. 你可以用:
+;;
+;; - 直接把 predicate(例如 `even?`, `keyword?`, 或匿名函数)写进路径
+;; - `selected?`: 如果某个子路径能选到东西, 就保留当前元素
+;; - `filterer`: 在路径内部对当前序列做过滤视图, 继续向下导航
+;;
+;; 这会让代码看起来更像是一个声明式查询/更新。
 
 ^{::clerk/visibility {:code :show :result :show}}
 (sp/select
@@ -184,28 +176,25 @@
   sp/ALL :id]
  world-state)
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 2.3 改变结构: 不仅是修改值")
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "两组很实用的能力:
+;; ## 2.3 改变结构: 不仅是修改值
 
-- `setval` vs `transform`: 直接覆盖 vs 基于旧值计算
-- `collect` / `collect-one`: 在向下导航时, 把“上文信息”收集起来, 让变换函数可以同时拿到这些上下文值
-
-`collect-one` 常用于“从父节点抓一个字段, 用来改子节点”。")
+;; 两组很实用的能力:
+;;
+;; - `setval` vs `transform`: 直接覆盖 vs 基于旧值计算
+;; - `collect` / `collect-one`: 在向下导航时, 把“上文信息”收集起来, 让变换函数可以同时拿到这些上下文值
+;;
+;; `collect-one` 常用于“从父节点抓一个字段, 用来改子节点”。
 
 ^{::clerk/visibility {:code :show :result :show}}
 (let [world' (sp/setval [:inventory "p2" :stock] 10 world-state)]
   {:before (get-in world-state [:inventory "p2"])
    :after (get-in world' [:inventory "p2"])})
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "### 报表生成示例: 列出 `[用户名, 订单ID]` 的所有组合
 
-思路: 在遍历每个用户时, 先用 `collect-one` 抓取用户名, 再把每个订单变换成 `[name order-id]` 的二元组. 这样就能用 `select` 直接把所有二元组取出来。")
+;; ### 报表生成示例: 列出 `[用户名, 订单ID]` 的所有组合
+;;
+;; 思路: 在遍历每个用户时, 先用 `collect-one` 抓取用户名, 再把每个订单变换成 `[name order-id]` 的二元组. 这样就能用 `select` 直接把所有二元组取出来。
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn user-order-report
@@ -228,17 +217,16 @@
 ;; 第三部分: 高级特性
 ;; ------------------------------------------------------------
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 3.1 递归路径: 处理不定深度的树")
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "辅助场景: 一个文件系统/分类树.
+;; ## 3.1 递归路径: 处理不定深度的树
 
-Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. 常见的两种遍历顺序:
 
-- `stay-then-continue`: 先访问当前节点, 再访问子节点(前序)
-- `continue-then-stay`: 先访问子节点, 再访问当前节点(后序)")
+;; 辅助场景: 一个文件系统/分类树.
+
+;; Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. 常见的两种遍历顺序:
+
+;; - `stay-then-continue`: 先访问当前节点, 再访问子节点(前序)
+;; - `continue-then-stay`: 先访问子节点, 再访问当前节点(后序)
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def tree
@@ -260,14 +248,12 @@ Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. �
 ^{::clerk/visibility {:code :show :result :show}}
 (sp/transform [TREE-NODES :name] str/upper-case tree)
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 3.2 自定义导航器: 让 Specter 适配非标准结构")
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "当你的数据不是普通的 map/vector(例如 Java 对象、deftype、第三方库结构), 仍然可以通过 `defnav` 为它们定义 Specter 导航器.
+;; ## 3.2 自定义导航器: 让 Specter 适配非标准结构
 
-示例里用 `deftype` 模拟一个 Java 风格的 `User` 对象(字段不可直接用 `assoc/update` 修改), 然后用自定义导航器让它可被 `select/transform` 操作。")
+;; 当你的数据不是普通的 map/vector(例如 Java 对象、deftype、第三方库结构), 仍然可以通过 `defnav` 为它们定义 Specter 导航器.
+;;
+;; 示例里用 `deftype` 模拟一个 Java 风格的 `User` 对象(字段不可直接用 `assoc/update` 修改), 然后用自定义导航器让它可被 `select/transform` 操作。
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (deftype JUser [^String name ^long credits])
@@ -310,14 +296,11 @@ Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. �
 ;; 第四部分: 性能与内部机制
 ;; ------------------------------------------------------------
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 4.1 宏的魔法: 编译期优化与路径缓存")
+;; ## 4.1 宏的魔法: 编译期优化与路径缓存
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "Specter 的 `select/transform/setval` 都是宏. 当路径是**静态字面量**(例如 `[ALL :a]`)时, 宏可以在编译期把路径编译成高效的导航器组合, 并做缓存。
+;; Specter 的 `select/transform/setval` 都是宏. 当路径是**静态字面量**(例如 `[ALL :a]`)时, 宏可以在编译期把路径编译成高效的导航器组合, 并做缓存。
 
-你可以用 `macroexpand-1` 直观看到这一点: `transform` 会把路径包装进 `com.rpl.specter/path`, 后者会做缓存与预编译。")
+;; 你可以用 `macroexpand-1` 直观看到这一点: `transform` 会把路径包装进 `com.rpl.specter/path`, 后者会做缓存与预编译。
 
 ^{::clerk/visibility {:code :show :result :show}}
 (let [form '(sp/transform [sp/ALL :a] inc data)]
@@ -326,9 +309,7 @@ Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. �
         (with-out-str (pp/pprint (macroexpand-1 form)))
         "```")))
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "对比一下 `transform*`(函数版本)的实现. 它会在运行时编译路径, 因此在热路径里反复调用通常更慢。")
+;; 对比一下 `transform*`(函数版本)的实现. 它会在运行时编译路径, 因此在热路径里反复调用通常更慢。
 
 ^{::clerk/visibility {:code :show :result :show}}
 (clerk/md
@@ -339,18 +320,16 @@ Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. �
             (compiled-transform (i/comp-paths* path) transform-fn structure))))
       "```"))
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 4.2 性能对比实验: Vanilla vs Specter(Inline/Compiled/Dynamic)")
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "下面这段会在 `criterium` 可用时直接跑基准, 并把结果用 Plotly 柱状图展示出来。
+;; ## 4.2 性能对比实验: Vanilla vs Specter(Inline/Compiled/Dynamic)
 
-注意:
-
-- 如果你用的是 `clojure -M:clerk`, 默认 classpath 没有 `criterium`, 本节会给出提示但不会报错.
-- 建议用 `clojure -M:dev:clerk` 启动 Clerk(这样 `criterium` 才在 classpath 上).
-- 基准默认只在当前 JVM 会话里跑一次并缓存, 需要重跑可调用 `(rerun-criterium!)`。")
+;; 下面这段会在 `criterium` 可用时直接跑基准, 并把结果用 Plotly 柱状图展示出来。
+;;
+;; 注意:
+;;
+;; - 如果你用的是 `clojure -M:clerk`, 默认 classpath 没有 `criterium`, 本节会给出提示但不会报错.
+;; - 建议用 `clojure -M:dev:clerk` 启动 Clerk(这样 `criterium` 才在 classpath 上).
+;; - 基准默认只在当前 JVM 会话里跑一次并缓存, 需要重跑可调用 `(rerun-criterium!)`。
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defonce ^{:doc "用于基准测试的 10 万个元素."} big-data
@@ -427,7 +406,7 @@ Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. �
     :thunk #(-> (vanilla-update big-data) first :a)}
    {:id :specter-inline
     :label "Specter(inline)"
-   :thunk #(-> (specter-inline big-data) first :a)}
+    :thunk #(-> (specter-inline big-data) first :a)}
    {:id :specter-compiled
     :label "Specter(comp-paths)"
     :thunk #(-> (specter-compiled big-data) first :a)}
@@ -435,23 +414,21 @@ Specter 的 `recursive-path` 允许你定义一个可复用的递归导航器. �
     :label "Specter(dynamic transform*)"
     :thunk #(-> (specter-dynamic big-data) first :a)}])
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "说明(这也是你截图里“和预期不一致”的关键原因):
-
-- 这组基准是非常浅的路径 `[ALL :a]`. 对这种场景, 手写 `mapv + update` 往往就是最快的, Specter 的通用导航层会带来固定开销, 所以慢一点很正常.
-- `transform` 是宏, 内部会用 `path` 宏做“编译期预编译 + 缓存”. 所以 **inline 其实已经是编译过的路径**.
-- `comp-paths` 是运行时把导航器组合起来, 并不等价于 `path` 宏的那套预编译策略. 因此 `comp-paths` 在某些简单路径上不一定更快(甚至可能略慢)。
-- “动态路径很慢”通常出现在: 路径需要运行时拼装、参数化、或反复把 path 当数据传来传去. 这种开销在一次性更新 10 万个元素时, 很可能被数据改写本身的成本淹没。")
+;; 说明(这也是你截图里“和预期不一致”的关键原因):
+;;
+;; - 这组基准是非常浅的路径 `[ALL :a]`. 对这种场景, 手写 `mapv + update` 往往就是最快的, Specter 的通用导航层会带来固定开销, 所以慢一点很正常.
+;; - `transform` 是宏, 内部会用 `path` 宏做“编译期预编译 + 缓存”. 所以 **inline 其实已经是编译过的路径**.
+;; - `comp-paths` 是运行时把导航器组合起来, 并不等价于 `path` 宏的那套预编译策略. 因此 `comp-paths` 在某些简单路径上不一定更快(甚至可能略慢)。
+;; - “动态路径很慢”通常出现在: 路径需要运行时拼装、参数化、或反复把 path 当数据传来传去. 这种开销在一次性更新 10 万个元素时, 很可能被数据改写本身的成本淹没。
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def default-criterium-opts
   "用于 notebook 的默认参数, 目标是把运行时间控制在可接受范围内.
 
-如果你想要更稳定的统计结果, 可以:
+  如果你想要更稳定的统计结果, 可以:
 
-- 在 REPL 中调用 `(rerun-criterium! {:mode :quick :options {...}})`
-- 或者使用 `:mode :full` 跑更严格的 `benchmark*`"
+  - 在 REPL 中调用 `(rerun-criterium! {:mode :quick :options {...}})`
+  - 或者使用 `:mode :full` 跑更严格的 `benchmark*`"
   {:samples 4
    :target-execution-time 30000000
    :warmup-jit-period 1000000000
@@ -606,19 +583,16 @@ cases 形如:
 ;; 4.2.1 路径编译开销放大实验: 小数据, 多次重复
 ;; ------------------------------------------------------------
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "### 4.2.1 路径编译开销: 为什么动态 path 有时会慢得多?")
+;; ### 4.2.1 路径编译开销: 为什么动态 path 有时会慢得多?
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "上一节的大数据基准里, 主要时间花在“改写 10 万个元素”本身, 路径编译的成本很容易被淹没。
-
-这里我们换一个相反的场景:
-
-- 结构很小(单个嵌套 map)
-- 操作重复很多次
-
-这会放大“每次都编译路径”的固定开销, 更接近真实业务里那种: 小对象频繁更新、路径在运行时拼装/参数化的情况。")
+;; 上一节的大数据基准里, 主要时间花在“改写 10 万个元素”本身, 路径编译的成本很容易被淹没。
+;;
+;; 这里我们换一个相反的场景:
+;;
+;; - 结构很小(单个嵌套 map)
+;; - 操作重复很多次
+;;
+;; 这会放大“每次都编译路径”的固定开销, 更接近真实业务里那种: 小对象频繁更新、路径在运行时拼装/参数化的情况。
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def tiny-structure
@@ -738,16 +712,12 @@ cases 形如:
   (when (= :ok status)
     summary))
 
+;; ## 4.3 缓存策略: comp-paths 与可复用的路径常量
 
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "## 4.3 缓存策略: comp-paths 与可复用的路径常量")
-
-^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md
- "如果你在业务代码里反复执行同一条导航路径, 推荐把路径提取成常量, 并用 `compiled-*` 系列函数执行:
-
-- 可读性: 给路径取一个业务名字
-- 性能: 路径只编译一次, 调用处不再承担编译成本")
+;; 如果你在业务代码里反复执行同一条导航路径, 推荐把路径提取成常量, 并用 `compiled-*` 系列函数执行:
+;;
+;; - 可读性: 给路径取一个业务名字
+;; - 性能: 路径只编译一次, 调用处不再承担编译成本
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defonce ^{:doc "pending 订单里 sale 商品的价格位置."} PENDING-SALE-PRICE
