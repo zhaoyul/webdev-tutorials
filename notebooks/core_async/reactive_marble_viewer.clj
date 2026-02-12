@@ -16,25 +16,27 @@
                        row-height 56
                        active-threshold 0.03]
                    (reagent.core/with-let [progress-atom (reagent.core/atom 0)
-                                           start-time-atom (reagent.core/atom (js/Date.now))
-                                           timer (js/setInterval
-                                                  (fn []
-                                                    (let [now (js/Date.now)
-                                                          elapsed (- now @start-time-atom)
-                                                          wrapped-elapsed (if (>= elapsed duration)
-                                                                            (do
-                                                                              (reset! start-time-atom now)
-                                                                              0)
-                                                                            elapsed)
-                                                          progress (/ wrapped-elapsed duration)]
-                                                      (reset! progress-atom progress)))
-                                                  40)]
+                                           start-time-atom (atom (js/Date.now))
+                                           frame-id (atom nil)
+                                           tick (fn tick []
+                                                  (let [now (js/Date.now)
+                                                        elapsed (- now @start-time-atom)
+                                                        wrapped-elapsed (if (>= elapsed duration)
+                                                                          (do
+                                                                            (reset! start-time-atom now)
+                                                                            0)
+                                                                          elapsed)
+                                                        progress (/ wrapped-elapsed duration)]
+                                                    (reset! progress-atom progress))
+                                                  (reset! frame-id (js/requestAnimationFrame tick)))]
+                     (when-not @frame-id
+                       (reset! frame-id (js/requestAnimationFrame tick)))
                      (let [progress @progress-atom
                            playhead-x (* width progress)
                            near-playhead? (fn [t]
                                             (let [p (/ t duration)
                                                   delta (js/Math.abs (- progress p))
-                                                  ;; 循环时间轴下取首尾最短距离, 避免播放线跨界跳变.
+                                                  ;; 循环时间轴下取首尾最短距离, 避免播放线跨界跳变
                                                   circular-delta (if (> delta 0.5) (- 1 delta) delta)]
                                               (< circular-delta active-threshold)))
                            ->x (fn [t] (* width (/ t duration)))]
@@ -88,7 +90,9 @@
                                     value]))))])]
                         [:div {:class "mt-4 text-xs text-slate-500"}
                          "播放线会循环移动, Marbles 在靠近当前时间点时会轻微放大."]])
-                     (finally (js/clearInterval timer)))))})
+                     (finally
+                       (when-let [id @frame-id]
+                         (js/cancelAnimationFrame id))))))})
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def reactive-demo
