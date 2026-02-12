@@ -4,7 +4,7 @@
   (:require [nextjournal.clerk :as clerk]))
 
 ^{::clerk/visibility {:code :hide :result :show}}
-(clerk/md "# Reactive marble diagram viewer\n\n这个 notebook 定制了一个 marble diagram viewer, 用来可视化 reactive 过程中的事件流与通信节奏.\n\n- 事件流以“轨道”排列, 每条轨道代表一个 stream.\n- 播放线会自动循环, 用动画展示事件的出现时刻.\n- 示例参考 [ReactiveX/RxClojure](https://github.com/ReactiveX/RxClojure) 的语义, 但数据完全可自定义.")
+(clerk/md "# Reactive marble diagram viewer\n\n这个 notebook 定义了一个 marble diagram viewer, 用来可视化 reactive 过程中的事件流与通信节奏.\n\n- 事件流以“轨道”排列, 每条轨道代表一个 stream.\n- 播放线会自动循环, 用动画展示事件的出现时刻.\n- 示例参考 [ReactiveX/RxClojure](https://github.com/ReactiveX/RxClojure) 的语义, 但数据完全可自定义.")
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def marble-viewer
@@ -13,7 +13,8 @@
                  (let [duration (or duration 4000)
                        tracks (or tracks [])
                        width 720
-                       row-height 56]
+                       row-height 56
+                       active-threshold 0.03]
                    (reagent.core/with-let [progress-atom (reagent.core/atom 0)
                                            start-time-atom (reagent.core/atom (js/Date.now))
                                            timer (js/setInterval
@@ -33,8 +34,9 @@
                            near-playhead? (fn [t]
                                             (let [p (/ t duration)
                                                   delta (js/Math.abs (- progress p))
+                                                  ;; 循环时间轴下取首尾最短距离, 避免播放线跨界跳变.
                                                   circular-delta (if (> delta 0.5) (- 1 delta) delta)]
-                                              (< circular-delta 0.03)))
+                                              (< circular-delta active-threshold)))
                            ->x (fn [t] (* width (/ t duration)))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
                         [:div {:class "flex items-center justify-between"}
@@ -90,7 +92,7 @@
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def reactive-demo
-  {:title "输入 -> debounce -> switchMap -> 响应"
+  {:title "输入 → debounce → switchMap → 响应"
    :duration 4200
    :tracks [{:label "输入流"
              :color "#6366f1"
