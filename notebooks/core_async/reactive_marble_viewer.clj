@@ -17,7 +17,7 @@
                        active-threshold 0.03]
                    (reagent.core/with-let [progress-atom (reagent.core/atom 0)
                                            start-time-atom (atom (js/Date.now))
-                                           frame-id (atom nil)
+                                           frame-id-atom (atom nil)
                                            tick (fn tick []
                                                   (let [now (js/Date.now)
                                                         elapsed (- now @start-time-atom)
@@ -28,9 +28,9 @@
                                                                           elapsed)
                                                         progress (/ wrapped-elapsed duration)]
                                                     (reset! progress-atom progress))
-                                                  (reset! frame-id (js/requestAnimationFrame tick)))]
-                     (when-not @frame-id
-                       (reset! frame-id (js/requestAnimationFrame tick)))
+                                                  (reset! frame-id-atom (js/requestAnimationFrame tick)))]
+                     (when-not @frame-id-atom
+                       (reset! frame-id-atom (js/requestAnimationFrame tick)))
                      (let [progress @progress-atom
                            playhead-x (* width progress)
                            near-playhead? (fn [t]
@@ -91,7 +91,7 @@
                         [:div {:class "mt-4 text-xs text-slate-500"}
                          "播放线会循环移动, Marbles 在靠近当前时间点时会轻微放大."]])
                      (finally
-                       (when-let [id @frame-id]
+                       (when-let [id @frame-id-atom]
                          (js/cancelAnimationFrame id))))))})
 
 ^{::clerk/visibility {:code :show :result :hide}}
