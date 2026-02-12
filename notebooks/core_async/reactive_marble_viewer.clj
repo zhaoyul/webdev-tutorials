@@ -15,26 +15,27 @@
                        width 720
                        row-height 56
                        active-threshold 0.03
-                       wrap-threshold 0.5]
+                       wrap-threshold 0.5
+                       full-cycle 1]
                    (reagent.core/with-let [progress-atom (reagent.core/atom 0)
                                            start-time (js/Date.now)
-                                           frame-id-atom (atom nil)
+                                           frame-id (atom nil)
                                            tick (fn tick []
                                                   (let [now (js/Date.now)
                                                         elapsed (- now start-time)
                                                         wrapped-elapsed (mod elapsed duration)
                                                         progress (/ wrapped-elapsed duration)]
                                                     (reset! progress-atom progress))
-                                                  (reset! frame-id-atom (js/requestAnimationFrame tick)))]
-                     (when-not @frame-id-atom
-                       (reset! frame-id-atom (js/requestAnimationFrame tick)))
+                                                  (reset! frame-id (js/requestAnimationFrame tick)))]
+                     (when-not @frame-id
+                       (reset! frame-id (js/requestAnimationFrame tick)))
                      (let [progress @progress-atom
                            playhead-x (* width progress)
                            near-playhead? (fn [t]
                                             (let [p (/ t duration)
                                                   delta (js/Math.abs (- progress p))
                                                   ;; 循环时间轴下取首尾最短距离, 避免播放线跨越边界跳变
-                                                  circular-delta (if (> delta wrap-threshold) (- 1 delta) delta)]
+                                                  circular-delta (if (> delta wrap-threshold) (- full-cycle delta) delta)]
                                               (< circular-delta active-threshold)))
                            ->x (fn [t] (* width (/ t duration)))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
@@ -52,7 +53,7 @@
                              [:div {:class "absolute left-0 right-0 top-1/2 h-px bg-slate-200"}]
                              [:div {:class "absolute top-0 bottom-0 w-0.5 bg-indigo-400/70"
                                     :style {:left (str playhead-x "px")}}]
-                             (for [[idx {:keys [t value kind color]}] (map-indexed vector events)]
+                             (for [[event-idx {:keys [t value kind color]}] (map-indexed vector events)]
                                (let [kind (or kind :next)
                                      x (->x t)
                                      event-color (or color track-color "#6366f1")
@@ -63,19 +64,19 @@
                                              (str value " @" t "ms"))]
                                  (case kind
                                    :complete
-                                   ^{:key (str label "-complete-" idx "-" t)}
+                                   ^{:key (str label "-complete-" event-idx "-" t)}
                                    [:div {:class "absolute top-1/2 h-4 w-0.5 rounded-full bg-slate-500"
                                           :style {:left (str x "px")
                                                   :transform "translate(-50%, -50%)"}
                                           :title title}]
                                    :error
-                                   ^{:key (str label "-error-" idx "-" t)}
+                                   ^{:key (str label "-error-" event-idx "-" t)}
                                    [:div {:class "absolute top-1/2 text-xs font-bold text-rose-500"
                                           :style {:left (str x "px")
                                                   :transform "translate(-50%, -50%)"}
                                           :title title}
                                     "×"]
-                                   ^{:key (str label "-" idx "-" t "-" value)}
+                                   ^{:key (str label "-" event-idx "-" t "-" value)}
                                    [:div {:class (str "absolute top-1/2 flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold text-white shadow-sm transition "
                                                       (if active?
                                                         "scale-110 border-white/80"
@@ -88,7 +89,7 @@
                         [:div {:class "mt-4 text-xs text-slate-500"}
                          "播放线会循环移动, Marbles 在靠近当前时间点时会轻微放大."]])
                      (finally
-                       (when-let [id @frame-id-atom]
+                       (when-let [id @frame-id]
                          (js/cancelAnimationFrame id))))))})
 
 ^{::clerk/visibility {:code :show :result :hide}}
