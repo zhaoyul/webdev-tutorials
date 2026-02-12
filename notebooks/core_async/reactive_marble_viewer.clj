@@ -20,12 +20,12 @@
                                                   (fn []
                                                     (let [now (js/Date.now)
                                                           elapsed (- now @!start-time)
-                                                          elapsed (if (>= elapsed duration)
-                                                                    (do
-                                                                      (reset! !start-time now)
-                                                                      0)
-                                                                    elapsed)
-                                                          progress (/ elapsed duration)]
+                                                          wrapped-elapsed (if (>= elapsed duration)
+                                                                            (do
+                                                                              (reset! !start-time now)
+                                                                              0)
+                                                                            elapsed)
+                                                          progress (/ wrapped-elapsed duration)]
                                                       (reset! !progress progress)))
                                                   40)]
                      (let [progress @!progress
@@ -33,9 +33,8 @@
                            near-playhead? (fn [t]
                                             (let [p (/ t duration)
                                                   delta (js/Math.abs (- progress p))
-                                                  ;; 处理时间轴首尾相接时的最短距离.
-                                                  wrap-delta (if (> delta 0.5) (- 1 delta) delta)]
-                                              (< wrap-delta 0.03)))
+                                                  circular-delta (if (> delta 0.5) (- 1 delta) delta)]
+                                              (< circular-delta 0.03)))
                            ->x (fn [t] (* width (/ t duration)))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
                         [:div {:class "flex items-center justify-between"}
@@ -86,7 +85,7 @@
                                           :title title}
                                     value]))))])]
                         [:div {:class "mt-4 text-xs text-slate-500"}
-                         "播放线会循环移动, Marbles 在靠近当前时间点时会轻微放大."]])
+                         "播放线会循环移动,Marbles 在靠近当前时间点时会轻微放大."]])
                      (finally (js/clearInterval timer)))))})
 
 ^{::clerk/visibility {:code :show :result :hide}}
