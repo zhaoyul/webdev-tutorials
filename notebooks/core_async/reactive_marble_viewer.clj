@@ -85,7 +85,7 @@
                                                   :transform "translate(-50%, -50%)"
                                                   :background-color event-color}
                                           :title title}
-                                    value]))))])]
+                                    value])))]])]
                         [:div {:class "mt-4 text-xs text-slate-500"}
                          "播放线会循环移动, Marbles 在靠近当前时间点时会轻微放大."]])
                      (finally
