@@ -15,14 +15,14 @@
                        width 720
                        row-height 56]
                    (reagent.core/with-let [!progress (reagent.core/atom 0)
-                                           start (reagent.core/atom (js/Date.now))
+                                           !start-time (reagent.core/atom (js/Date.now))
                                            timer (js/setInterval
                                                   (fn []
                                                     (let [now (js/Date.now)
-                                                          elapsed (- now @start)
+                                                          elapsed (- now @!start-time)
                                                           elapsed (if (>= elapsed duration)
                                                                     (do
-                                                                      (reset! start now)
+                                                                      (reset! !start-time now)
                                                                       0)
                                                                     elapsed)
                                                           progress (/ elapsed duration)]
@@ -30,11 +30,12 @@
                                                   40)]
                      (let [progress @!progress
                            playhead-x (* width progress)
-                           hit? (fn [t]
-                                  (let [p (/ t duration)
-                                        delta (js/Math.abs (- progress p))
-                                        wrap-delta (if (> delta 0.5) (- 1 delta) delta)]
-                                    (< wrap-delta 0.03)))
+                           near-playhead? (fn [t]
+                                            (let [p (/ t duration)
+                                                  delta (js/Math.abs (- progress p))
+                                                  ;; 处理时间轴首尾相接时的最短距离.
+                                                  wrap-delta (if (> delta 0.5) (- 1 delta) delta)]
+                                              (< wrap-delta 0.03)))
                            ->x (fn [t] (* width (/ t duration)))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
                         [:div {:class "flex items-center justify-between"}
@@ -55,7 +56,7 @@
                                (let [kind (or kind :next)
                                      x (->x t)
                                      event-color (or color track-color "#6366f1")
-                                     active? (hit? t)
+                                     active? (near-playhead? t)
                                      title (case kind
                                              :complete "完成"
                                              :error "错误"
