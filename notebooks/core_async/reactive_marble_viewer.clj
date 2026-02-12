@@ -1,6 +1,6 @@
 ^{:nextjournal.clerk/visibility {:code :hide}
   :nextjournal.clerk/toc true}
-(ns core-async-reactive-marble-viewer
+(ns core_async.reactive_marble_viewer
   (:require [nextjournal.clerk :as clerk]))
 
 ^{::clerk/visibility {:code :hide :result :show}}
@@ -15,11 +15,17 @@
                        width 720
                        row-height 56]
                    (reagent.core/with-let [!progress (reagent.core/atom 0)
-                                           start (js/Date.now)
+                                           start (reagent.core/atom (js/Date.now))
                                            timer (js/setInterval
                                                   (fn []
-                                                    (let [elapsed (- (js/Date.now) start)
-                                                          progress (/ (mod elapsed duration) duration)]
+                                                    (let [now (js/Date.now)
+                                                          elapsed (- now @start)
+                                                          elapsed (if (>= elapsed duration)
+                                                                    (do
+                                                                      (reset! start now)
+                                                                      0)
+                                                                    elapsed)
+                                                          progress (/ elapsed duration)]
                                                       (reset! !progress progress)))
                                                   40)]
                      (let [progress @!progress
@@ -27,8 +33,8 @@
                            hit? (fn [t]
                                   (let [p (/ t duration)
                                         delta (js/Math.abs (- progress p))
-                                        delta (min delta (- 1 delta))]
-                                    (< delta 0.03)))
+                                        wrap-delta (if (> delta 0.5) (- 1 delta) delta)]
+                                    (< wrap-delta 0.03)))
                            ->x (fn [t] (* width (/ t duration)))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
                         [:div {:class "flex items-center justify-between"}
