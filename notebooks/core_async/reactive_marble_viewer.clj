@@ -14,21 +14,21 @@
                        tracks (or tracks [])
                        width 720
                        row-height 56]
-                   (reagent.core/with-let [!progress (reagent.core/atom 0)
-                                           !start-time (reagent.core/atom (js/Date.now))
+                   (reagent.core/with-let [progress-atom (reagent.core/atom 0)
+                                           start-time-atom (reagent.core/atom (js/Date.now))
                                            timer (js/setInterval
                                                   (fn []
                                                     (let [now (js/Date.now)
-                                                          elapsed (- now @!start-time)
+                                                          elapsed (- now @start-time-atom)
                                                           wrapped-elapsed (if (>= elapsed duration)
                                                                             (do
-                                                                              (reset! !start-time now)
+                                                                              (reset! start-time-atom now)
                                                                               0)
                                                                             elapsed)
                                                           progress (/ wrapped-elapsed duration)]
-                                                      (reset! !progress progress)))
+                                                      (reset! progress-atom progress)))
                                                   40)]
-                     (let [progress @!progress
+                     (let [progress @progress-atom
                            playhead-x (* width progress)
                            near-playhead? (fn [t]
                                             (let [p (/ t duration)
@@ -85,7 +85,7 @@
                                           :title title}
                                     value]))))])]
                         [:div {:class "mt-4 text-xs text-slate-500"}
-                         "播放线会循环移动,Marbles 在靠近当前时间点时会轻微放大."]])
+                         "播放线会循环移动, Marbles 在靠近当前时间点时会轻微放大."]])
                      (finally (js/clearInterval timer)))))})
 
 ^{::clerk/visibility {:code :show :result :hide}}
