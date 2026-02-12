@@ -16,16 +16,12 @@
                        row-height 56
                        active-threshold 0.03]
                    (reagent.core/with-let [progress-atom (reagent.core/atom 0)
-                                           start-time-atom (atom (js/Date.now))
+                                           start-time (js/Date.now)
                                            frame-id-atom (atom nil)
                                            tick (fn tick []
                                                   (let [now (js/Date.now)
-                                                        elapsed (- now @start-time-atom)
-                                                        wrapped-elapsed (if (>= elapsed duration)
-                                                                          (do
-                                                                            (reset! start-time-atom now)
-                                                                            0)
-                                                                          elapsed)
+                                                        elapsed (- now start-time)
+                                                        wrapped-elapsed (mod elapsed duration)
                                                         progress (/ wrapped-elapsed duration)]
                                                     (reset! progress-atom progress))
                                                   (reset! frame-id-atom (js/requestAnimationFrame tick)))]
@@ -36,7 +32,7 @@
                            near-playhead? (fn [t]
                                             (let [p (/ t duration)
                                                   delta (js/Math.abs (- progress p))
-                                                  ;; 循环时间轴下取首尾最短距离, 避免播放线跨界跳变
+                                                  ;; 循环时间轴下取首尾最短距离, 避免播放线跨越边界跳变
                                                   circular-delta (if (> delta 0.5) (- 1 delta) delta)]
                                               (< circular-delta active-threshold)))
                            ->x (fn [t] (* width (/ t duration)))]
@@ -55,7 +51,7 @@
                              [:div {:class "absolute left-0 right-0 top-1/2 h-px bg-slate-200"}]
                              [:div {:class "absolute top-0 bottom-0 w-0.5 bg-indigo-400/70"
                                     :style {:left (str playhead-x "px")}}]
-                             (for [{:keys [t value kind color]} events]
+                             (for [[idx {:keys [t value kind color]}] (map-indexed vector events)]
                                (let [kind (or kind :next)
                                      x (->x t)
                                      event-color (or color track-color "#6366f1")
@@ -66,19 +62,19 @@
                                              (str value " @" t "ms"))]
                                  (case kind
                                    :complete
-                                   ^{:key (str label "-complete-" t)}
+                                   ^{:key (str label "-complete-" idx "-" t)}
                                    [:div {:class "absolute top-1/2 h-4 w-0.5 rounded-full bg-slate-500"
                                           :style {:left (str x "px")
                                                   :transform "translate(-50%, -50%)"}
                                           :title title}]
                                    :error
-                                   ^{:key (str label "-error-" t)}
+                                   ^{:key (str label "-error-" idx "-" t)}
                                    [:div {:class "absolute top-1/2 text-xs font-bold text-rose-500"
                                           :style {:left (str x "px")
                                                   :transform "translate(-50%, -50%)"}
                                           :title title}
                                     "×"]
-                                   ^{:key (str label "-" t "-" value)}
+                                   ^{:key (str label "-" idx "-" t "-" value)}
                                    [:div {:class (str "absolute top-1/2 flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold text-white shadow-sm transition "
                                                       (if active?
                                                         "scale-110 border-white/80"
