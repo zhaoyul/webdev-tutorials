@@ -14,9 +14,9 @@
                        tracks (or tracks [])
                        width 720
                        row-height 56
-                       active-threshold 0.03
-                       wrap-threshold 0.5
-                       full-cycle 1]
+                       active-threshold-ratio 0.03
+                       wrap-threshold-ratio 0.5
+                       full-cycle-ratio 1]
                    (reagent.core/with-let [progress-atom (reagent.core/atom 0)
                                            start-time (js/Date.now)
                                            frame-id (atom nil)
@@ -35,8 +35,8 @@
                                             (let [p (/ t duration)
                                                   delta (js/Math.abs (- progress p))
                                                   ;; 循环时间轴下取首尾最短距离, 避免播放线跨越边界跳变
-                                                  circular-delta (if (> delta wrap-threshold) (- full-cycle delta) delta)]
-                                              (< circular-delta active-threshold)))
+                                                  circular-delta (if (> delta wrap-threshold-ratio) (- full-cycle-ratio delta) delta)]
+                                              (< circular-delta active-threshold-ratio)))
                            ->x (fn [t] (* width (/ t duration)))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
                         [:div {:class "flex items-center justify-between"}
