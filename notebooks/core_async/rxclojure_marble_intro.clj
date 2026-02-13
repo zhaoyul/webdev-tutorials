@@ -23,31 +23,12 @@
 (def fallback-max-time-ms 1)
 
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
-(defn collect-events
-  "订阅 observable 并采集 on-next/on-complete 的时间点, 让 marble viewer 能看到真实执行过程."
-  [observable]
-  (let [start (System/currentTimeMillis)
-        events (atom [])
-        done (promise)]
-    (rx/subscribe
-     observable
-     (fn [v]
-       (swap! events conj {:t (- (System/currentTimeMillis) start)
-                           :value v}))
-     (fn [e]
-       (swap! events conj {:t (- (System/currentTimeMillis) start)
-                           :kind :error
-                           :value (.getMessage e)})
-       (deliver done true))
-     (fn []
-       (swap! events conj {:t (- (System/currentTimeMillis) start)
-                           :kind :complete})
-       (deliver done true)))
-    (when-not (deref done collect-timeout-ms false)
-      (swap! events conj {:t collect-timeout-ms
-                          :kind :error
-                          :value "observable collection timeout"}))
-    @events))
+(def marble-diagram-duration-ms 4200)
+
+^{:nextjournal.clerk/visibility {:code :show :result :show}}
+(defn now-ms
+  [start]
+  (- (System/currentTimeMillis) start))
 
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
 (defn normalize-events
@@ -68,41 +49,62 @@
 (def rx-execution
   (let [input-values ["c" "cl" "clj" "cloj" "clojure"]
         keep-min-length-3? #(>= (count %) 3)
-        source-o (fn []
-                   (->> (rx/seq->o input-values)
-                        (rx/do (fn [_] (Thread/sleep 80)))))
-        filtered-o (fn []
-                     (->> (source-o)
-                          (rx/filter keep-min-length-3?)
-                          (rx/do (fn [_] (Thread/sleep 90)))))
-        mapped-o (fn []
-                   (->> (source-o)
-                        (rx/filter keep-min-length-3?)
-                        (rx/map str/upper-case)
-                        (rx/do (fn [_] (Thread/sleep 100)))))
-        duration 4200
-        source-events (normalize-events (collect-events (source-o)) duration)
-        filtered-events (normalize-events (collect-events (filtered-o)) duration)
-        mapped-events (normalize-events (collect-events (mapped-o)) duration)]
-    {:duration duration
-     :tracks [{:label "源序列 (rx/seq->o)"
-               :color "#6366f1"
-               :events source-events}
-              {:label "filter #(>= (count %) 3)"
-               :color "#14b8a6"
-               :events filtered-events}
-              {:label "map str/upper-case"
-               :color "#10b981"
-               :events mapped-events}]}))
+        start (System/currentTimeMillis)
+        source-events (atom [])
+        filtered-events (atom [])
+        mapped-events (atom [])
+        track-atoms [source-events filtered-events mapped-events]
+        output-values (atom [])
+        done (promise)
+        mark-value! (fn [events value]
+                      (swap! events conj {:t (now-ms start)
+                                          :value value}))
+        mark-complete! (fn [events]
+                         (swap! events conj {:t (now-ms start)
+                                             :kind :complete}))
+        mark-error! (fn [events message]
+                      (swap! events conj {:t (now-ms start)
+                                          :kind :error
+                                          :value message}))
+        mark-all! (fn [f & args]
+                    (doseq [events track-atoms]
+                      (apply f events args)))]
+    (rx/subscribe
+     (->> (rx/seq->o input-values)
+          (rx/do #(mark-value! source-events %))
+          (rx/filter keep-min-length-3?)
+          (rx/do #(mark-value! filtered-events %))
+          (rx/map str/upper-case)
+          (rx/do #(mark-value! mapped-events %)))
+     #(swap! output-values conj %)
+     (fn [e]
+       (let [msg (.getMessage e)]
+         (mark-error! mapped-events msg))
+       (deliver done true))
+     (fn []
+       (mark-all! mark-complete!)
+       (deliver done true)))
+    (when-not (deref done collect-timeout-ms false)
+      (mark-error! mapped-events "observable collection timeout"))
+    (let [duration marble-diagram-duration-ms
+          source-events (normalize-events @source-events duration)
+          filtered-events (normalize-events @filtered-events duration)
+          mapped-events (normalize-events @mapped-events duration)]
+      {:values @output-values
+       :duration duration
+       :tracks [{:label "源序列 (rx/seq->o)"
+                 :color "#6366f1"
+                 :events source-events}
+                {:label "filter #(>= (count %) 3)"
+                 :color "#14b8a6"
+                 :events filtered-events}
+                {:label "map str/upper-case"
+                 :color "#10b981"
+                 :events mapped-events}]})))
 
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
 (def rxclojure-example-values
-  (->> (:tracks rx-execution)
-       (filter #(= "map str/upper-case" (:label %)))
-       first
-       :events
-       (filter #(not= :complete (:kind %)))
-       (mapv :value)))
+  (:values rx-execution))
 
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
 (def rxclojure-marble
