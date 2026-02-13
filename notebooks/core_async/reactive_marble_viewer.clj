@@ -19,14 +19,22 @@
                           loop? false}}]
                  (let [duration (or duration 4000)
                        tracks (or tracks [])
-                       width (or width (max 900 (* 0.22 duration)))
-                       row-height 56
+                       width (or width (max 760 (* 0.2 duration)))
+                       row-height 64
+                       timeline-left 20
+                       timeline-right 44
+                       timeline-span (max 80 (- width timeline-left timeline-right))
                        speed-options [0.5 0.75 1 1.25 1.5 2 3]
                        format-speed (fn [speed]
                                       (if (js/Number.isInteger speed)
                                         (str speed "x")
                                         (str (.toFixed speed 2) "x")))
-                       ->x (fn [t] (* width (/ t duration)))]
+                       ->x (fn [t]
+                             (+ timeline-left
+                                (* timeline-span (/ t duration))))
+                       ->playhead-x (fn [progress]
+                                      (+ timeline-left
+                                         (* timeline-span progress)))]
                    (reagent.core/with-let [speed-atom (reagent.core/atom (if (pos? playback-rate) playback-rate 1))
                                            loop-atom (reagent.core/atom (boolean loop?))
                                            progress-atom (reagent.core/atom (if loop? 0 1))
@@ -54,7 +62,7 @@
                      (when (and @loop-atom (nil? @timer-id))
                        (sync-playback!))
                      (let [progress @progress-atom
-                           playhead-x (* width progress)
+                           playhead-x (->playhead-x progress)
                            reached? (fn [t]
                                       (<= (/ t duration) progress))]
                        [:div {:class "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}
@@ -97,8 +105,31 @@
                             [:div {:class "flex items-center gap-3" :style {:height row-height}}
                              [:div {:class "w-28 shrink-0 text-sm font-medium text-slate-600"} label]
                              [:div {:class "relative" :style {:width (str width "px")}}
-                              [:div {:class "absolute left-0 right-0 top-1/2 h-px bg-slate-200"}]
-                              [:div {:class "absolute top-0 bottom-0 w-0.5 bg-indigo-400/70"
+                              [:div {:class "absolute top-1/2 bg-slate-900"
+                                     :style {:left (str timeline-left "px")
+                                             :width (str timeline-span "px")
+                                             :height "3px"
+                                             :border-radius "9999px"
+                                             :transform "translateY(-50%)"}}]
+                              [:div {:class "absolute top-1/2 bg-slate-900"
+                                     :style {:left (str timeline-left "px")
+                                             :width "3px"
+                                             :height "48px"
+                                             :border-radius "9999px"
+                                             :transform "translate(-50%, -50%)"}}]
+                              [:svg {:class "absolute overflow-visible"
+                                     :style {:left (str (+ timeline-left timeline-span -6) "px")
+                                             :top "50%"
+                                             :width "18px"
+                                             :height "18px"
+                                             :transform "translateY(-50%)"}}
+                               [:path {:d "M2 2 L14 9 L2 16"
+                                       :fill "none"
+                                       :stroke "#0f172a"
+                                       :stroke-width "3"
+                                       :stroke-linecap "round"
+                                       :stroke-linejoin "round"}]]
+                              [:div {:class "absolute top-0 bottom-0 w-0.5 bg-indigo-500/80"
                                      :style {:left (str playhead-x "px")
                                              :transition "left 16ms linear"}}]
                               (for [[event-idx {:keys [t value kind color]}] (map-indexed vector events)]
@@ -113,7 +144,7 @@
                                   (case kind
                                     :complete
                                     ^{:key (str label "-complete-" event-idx "-" t)}
-                                    [:div {:class "absolute top-1/2 h-4 w-0.5 rounded-full bg-slate-500"
+                                    [:div {:class "absolute top-1/2 h-5 w-1 rounded-full bg-slate-800"
                                            :style {:left (str x "px")
                                                    :transform "translate(-50%, -50%)"
                                                    :opacity (if visible? 1 0)
@@ -122,16 +153,16 @@
                                            :aria-label tooltip}]
                                     :error
                                     ^{:key (str label "-error-" event-idx "-" t)}
-                                    [:div {:class "absolute top-1/2 text-base font-bold leading-none text-rose-500"
+                                    [:div {:class "absolute top-1/2 text-lg font-bold leading-none text-rose-500"
                                            :style {:left (str x "px")
                                                    :transform (str "translate(-50%, -50%) scale(" (if visible? "1" "0.85") ")")
                                                    :opacity (if visible? 1 0)
                                                    :transition "opacity 120ms linear, transform 140ms ease-out"}
                                            :title tooltip
                                            :aria-label tooltip}
-                                     "×"]
+                                    "×"]
                                     ^{:key (str label "-" event-idx "-" t "-" value)}
-                                    [:div {:class "absolute top-1/2 h-5 w-5 rounded-full border border-white/50 shadow-sm"
+                                    [:div {:class "absolute top-1/2 h-8 w-8 rounded-full border-[3px] border-slate-900 shadow-sm"
                                            :style {:left (str x "px")
                                                    :transform (str "translate(-50%, -50%) scale(" (if visible? "1" "0.75") ")")
                                                    :opacity (if visible? 1 0)
@@ -140,7 +171,7 @@
                                            :title tooltip
                                            :aria-label tooltip}])))]])]]
                         [:div {:class "mt-4 text-xs text-slate-500"}
-                         "循环播放关闭时默认展示结束状态; 打开后按当前倍速循环播放."]])
+                         "样式参考 marble 线图: 左起点竖线, 右箭头, 事件球按时间出现并可 tooltip 查看详情."]])
                      (finally
                        (when-let [id @timer-id]
                          (js/clearInterval id))))))})
