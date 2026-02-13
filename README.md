@@ -53,6 +53,7 @@
 
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
+- `notebooks/core_async/rxclojure_marble_intro.clj`：基于 marble diagram 的 RxClojure 入门
 - `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示
 - `notebooks/specter_guide.clj`：Specter 从入门到进阶(路径 DSL、递归、自定义导航器、性能与缓存)
 - `notebooks/book.clj`：Clerk 官方文档译注与查看器示例
