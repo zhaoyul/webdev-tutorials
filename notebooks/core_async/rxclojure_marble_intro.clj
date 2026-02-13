@@ -56,7 +56,7 @@
 ;; ```clojure
 ;; (->> (rx/seq->o ["c" "cl" "clj" "cloj" "clojure"])
 ;;      (rx/filter #(>= (count %) 3))
-;;      (rx/map clojure.string/upper-case))
+;;      (rx/map str/upper-case))
 ;; ```
 ;;
 ;; `rxclojure-example-values` 的结果应为 `["CLJ" "CLOJ" "CLOJURE"]`.
