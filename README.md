@@ -55,6 +55,7 @@
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
 - `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示
 - `notebooks/specter_guide.clj`：Specter 从入门到进阶(路径 DSL、递归、自定义导航器、性能与缓存)
+- `notebooks/transducer_guide.clj`：Transducer 专题 notebook(组合、复用、提前终止与自定义 transducer)
 - `notebooks/book.clj`：Clerk 官方文档译注与查看器示例
 
 ### 辅助文件
