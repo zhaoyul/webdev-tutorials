@@ -19,15 +19,20 @@
 (defn full-stacko
   "既会 Clojure 又会 UI 的成员."
   [member]
-  (has-skillo member :clojure)
-  (has-skillo member :ui))
+  (fresh [m]
+    (== m member)
+    (has-skillo m :clojure)
+    (has-skillo m :ui)))
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn available-full-stacko
   "指定日期可排班的全栈成员."
   [member day]
-  (full-stacko member)
-  (membero [member day] c/member-shifts))
+  (fresh [m d]
+    (== m member)
+    (== d day)
+    (full-stacko m)
+    (membero [m d] c/member-shifts)))
 
 ;; ## 1. 先写小 relation, 再做组合
 
@@ -86,8 +91,8 @@
 ^{::clerk/visibility {:code :hide :result :show}}
 (clerk/table
  {:head ["建议" "原因"]
-  :rows [["先事实, 后规则" "先把原始事实变成 relation, 更容易验证"]
-         ["先小样本, 后放量" "用 run 限制结果数, 更容易调试"]
+  :rows [["先事实、后规则" "先把原始事实变成 relation, 更容易验证"]
+         ["先小样本、后放量" "用 run 限制结果数, 更容易调试"]
          ["避免一次塞太多宿主语言逻辑" "保持 relation 纯净, 可逆性更强"]
          ["递归 relation 先加基础分支" "先保证终止条件清晰, 再扩展复杂规则"]
          ["把高选择性条件放前面" "能更快收缩搜索空间"]]})

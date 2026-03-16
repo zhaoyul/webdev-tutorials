@@ -1,4 +1,4 @@
-^{:nextjournal.clerk/visibility {:code :hide}}
+^{::clerk/visibility {:code :hide}}
 (ns core-logic.common
   "core.logic 示例公共数据与辅助函数."
   (:require [nextjournal.clerk :as clerk]))
