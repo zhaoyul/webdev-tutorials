@@ -54,6 +54,11 @@
 ### 其他专题
 - `notebooks/core_async/core_async_flow.clj`：core.async flow/flow-monitor
 - `notebooks/core_async/rxclojure_marble_intro.clj`：基于 marble diagram 的 RxClojure 入门
+- `notebooks/core_logic/overview.md`：core.logic 专题导航
+- `notebooks/core_logic/intro.clj`：core.logic 入门与双向查询
+- `notebooks/core_logic/family_relations.clj`：用亲属关系建立递归 relation
+- `notebooks/core_logic/applications.clj`：权限推导、人员匹配与有限域约束
+- `notebooks/core_logic/techniques.clj`：core.logic 的应用技巧与搜索控制
 - `notebooks/clojure112/clojure112_features.clj`：Clojure 1.12 特性演示
 - `notebooks/specter_guide.clj`：Specter 从入门到进阶(路径 DSL、递归、自定义导航器、性能与缓存)
 - `notebooks/transducer_guide.clj`：Transducer 专题 notebook(组合、复用、提前终止与自定义 transducer)
