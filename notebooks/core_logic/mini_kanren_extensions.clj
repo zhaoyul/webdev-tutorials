@@ -1,5 +1,5 @@
 ^#:nextjournal.clerk{:visibility {:code :hide} :toc true}
-(ns core-logic.mini-kanren-extensions
+(ns core_logic.mini_kanren_extensions
   "miniKanren 扩展示例: 程序生成, quine 与简单程序归纳."
   (:require [clojure.core.logic :refer [== membero project run*]]
             [nextjournal.clerk :as clerk]))
@@ -16,6 +16,23 @@
 ;;
 ;; 为了保持 notebook 可读, 这里不直接实现完整的 relational interpreter,
 ;; 而是采用"有限候选程序空间 + 极小解释器 + core.logic 搜索"的方式.
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn describe-value-type
+  "给错误信息提供更易读的值类型描述."
+  [value]
+  (cond
+    (nil? value) "nil"
+    (map? value) "map"
+    (vector? value) "vector"
+    (list? value) "list"
+    (seq? value) "seq"
+    (symbol? value) "symbol"
+    (keyword? value) "keyword"
+    (string? value) "string"
+    (number? value) "number"
+    (boolean? value) "boolean"
+    :else (or (some-> value type .getSimpleName) "unknown")))
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn tiny-eval
@@ -38,21 +55,34 @@
      (let [op (first expr)]
        (case op
          quote (second expr)
-         list (apply list (map #(tiny-eval % env) (rest expr)))
+         list (into '() (reverse (map #(tiny-eval % env) (rest expr))))
          cons (cons (tiny-eval (second expr) env)
                     (tiny-eval (nth expr 2) env))
          first (first (tiny-eval (second expr) env))
+         second (second (tiny-eval (second expr) env))
          rest (rest (tiny-eval (second expr) env))
-         fn {:tag :closure
-             :param (first (second expr))
-             :body (nth expr 2)
-             :env env}
-         (let [closure (tiny-eval op env)
-               arg (tiny-eval (second expr) env)]
-           (when-not (= :closure (:tag closure))
-             (throw (ex-info "只支持单参数闭包调用." {:expr expr :value closure})))
-           (tiny-eval (:body closure)
-                      (assoc (:env closure) (:param closure) arg)))))
+         fn (let [params (second expr)
+                  body (nth expr 2 nil)]
+              (when-not (and (vector? params)
+                             (= 1 (count params))
+                             (some? body))
+                (throw (ex-info "`fn` 表达式格式错误: 期望 `(fn [param] body)` 形式."
+                                {:expr expr})))
+              {:tag :closure
+               :param (first params)
+               :body body
+               :env env})
+          (let [closure (tiny-eval op env)
+                arg (tiny-eval (second expr) env)
+                type-desc (describe-value-type closure)]
+            (when-not (= :closure (:tag closure))
+              (throw (ex-info (str "尝试调用非闭包值, 表达式为: " expr
+                                   ", 实际得到类型: " type-desc)
+                              {:expr expr
+                               :value closure
+                               :value-type type-desc})))
+            (tiny-eval (:body closure)
+                       (assoc (:env closure) (:param closure) arg)))))
 
      :else expr)))
 
@@ -68,7 +98,8 @@
 ;; 最简单的做法, 是先定义一组很小的程序模板,
 ;; 然后让 logic search 自动挑出"运行结果刚好等于目标"的候选者.
 
-^{::clerk/visibility {:code :show :result :hide}}
+^{::clerk/visibility {:code :show :result :hide}
+  :doc "用于演示自动生成 `(I love you)` 程序的候选模板集合."}
 (def love-programs
   ['(quote (I love you))
    '(list (quote I) (quote love) (quote you))
@@ -92,6 +123,8 @@
 ;; 经典思路是先固定一个外层框架:
 ;; `((fn [x] body) (quote (fn [x] body)))`
 ;; 然后把 `body` 当成搜索对象.
+;; 这里保留了几个会失败的 `body` 候选, 是为了让搜索过程更像"试探 + 过滤",
+;; 而不是一开始就把唯一正确答案直接写死.
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (def quine-bodies
@@ -110,7 +143,10 @@
     (list f (list 'quote f))))
 
 ^{::clerk/visibility {:code :show :result :hide}}
-(def quine-programs
+(defn build-quine-programs
+  "构造 quine 搜索结果, 返回 `[body program]` 形式的向量序列.
+  这里把实际计算放进单独函数, 方便配合 `delay` 做延迟初始化."
+  []
   (vec
    (keep (fn [body]
            (let [program (make-quine body)]
@@ -118,9 +154,17 @@
                [body program])))
          quine-bodies)))
 
+^{::clerk/visibility {:code :show :result :hide}}
+;; 这里先把 quine 候选预计算出来, 是为了让后面的 query 更聚焦在"搜索结果长什么样".
+;; 当前候选集合很小, 但这里仍然用 `delay` 推迟初始化, 避免 namespace 加载时立刻求值.
+;; 这样做的原因是 notebook 初次加载时无需马上执行筛选计算, 只有真正查看 quine 查询结果时才展开.
+;; 真正执行 query 时, 再通过 `force` 取出 `[body program]` 向量对.
+(def quine-programs
+  (delay (build-quine-programs)))
+
 ^{::clerk/visibility {:code :show :result :show}}
 (run* [q]
-  (membero q quine-programs))
+  (membero q (force quine-programs)))
 
 ;; 上面的结果会告诉我们:
 ;; 在这一小组候选 `body` 中,
@@ -133,16 +177,20 @@
 ;; - 给目标输出 Y
 ;; - 让系统搜索一个满足条件的程序
 
-^{::clerk/visibility {:code :show :result :hide}}
+^{::clerk/visibility {:code :show :result :hide}
+  :doc "用于程序归纳示例的候选转换程序集合."}
+;; 这里有意保留了一些可复用的小表达式片段,
+;; 让读者能看到更小的程序块如何被重新组合成满足 `X -> Y` 的候选程序.
 (def transform-programs
   ['input
    '(first input)
+   '(second input)
    '(rest input)
    '(first (rest input))
    '(rest (rest input))
-   '(cons (first input) (rest input))
+   '(cons (first input) (second input))
    '(cons (first input) (first (rest input)))
-   '(list (first input) (first (rest input)))
+   '(list (first input) (second input))
    '(cons (quote hello) input)])
 
 ^{::clerk/visibility {:code :show :result :show}}
@@ -153,7 +201,7 @@
     (executeso program x y)))
 
 ;; 这个例子里, 系统会找到:
-;; `(cons (first input) (first (rest input)))`
+;; `(cons (first input) (second input))`
 ;;
 ;; 它并不是"硬编码的答案",
 ;; 而是在有限程序空间里, 自动找到能把 X 变成 Y 的那个程序.
