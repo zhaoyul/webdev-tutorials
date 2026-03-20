@@ -9,17 +9,19 @@
 ;; 真正让 miniKanren 变得很有趣的地方, 往往不是"查一个答案",
 ;; 而是把"程序"本身也当成搜索对象.
 ;;
-;; 这一页用一个极小的 Lisp 子语言演示三个经典方向:
-;; - 自动生成一个会得到 `(I love you)` 的程序.
-;; - 自动生成 quine.
-;; - "找一个程序, 使它把 X 变成 Y".
+;; 这一页用一个极小的 Clojure 子集演示三个经典方向:
+;; - 自动生成一个会得到 `(I love you)` 的 Clojure 程序.
+;; - 自动生成 Clojure quine.
+;; - "找一个 Clojure 程序, 使它把 X 变成 Y".
 ;;
 ;; 为了保持 notebook 可读, 这里不直接实现完整的 relational interpreter,
-;; 而是采用"有限候选程序空间 + 极小解释器 + core.logic 搜索"的方式.
+;; 而是采用"有限候选 Clojure form + 极小解释器 + core.logic 搜索"的方式.
+;; 这里返回的搜索结果本身就是 Clojure form, 可以直接当成 Clojure 程序来读.
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn describe-value-type
-  "给错误信息提供更易读的值类型描述."
+  "给错误信息提供更易读的值类型描述.
+  接受任意值 `value`, 返回描述该值类型的字符串."
   [value]
   (cond
     (nil? value) "nil"
@@ -36,7 +38,9 @@
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn tiny-eval
-  "求值一个极小的 Lisp 子语言."
+  "求值一个极小的 Clojure 子集.
+  接受表达式 `expr` 和可选环境 `env`, 返回求值结果.
+  支持 `quote`、`list`、`cons`、`first`、`second`、`rest` 和单参数 `fn`."
   ([expr]
    (tiny-eval expr {}))
   ([expr env]
@@ -88,12 +92,20 @@
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn executeso
-  "当程序在给定输入上运行后得到 output."
+  "建立 Clojure 程序在给定输入上运行后得到指定输出的关系.
+  `program` 是待执行程序, `input` 会绑定到程序里的 `input`, `output` 是期望结果."
   [program input output]
   (project [program input]
     (== output (tiny-eval program {'input input}))))
 
-;; ## 1. 自动生成 `(I love you)` 的程序
+^{::clerk/visibility {:code :show :result :hide}}
+(defn emit-clojure-code
+  "把搜索得到的程序转成更直观的 Clojure 源码字符串.
+  接受程序 form `program`, 返回它的字符串表示."
+  [program]
+  (pr-str program))
+
+;; ## 1. 自动生成 `(I love you)` 的 Clojure 程序
 ;;
 ;; 最简单的做法, 是先定义一组很小的程序模板,
 ;; 然后让 logic search 自动挑出"运行结果刚好等于目标"的候选者.
@@ -112,6 +124,12 @@
 (run* [program]
   (membero program love-programs)
   (executeso program nil '(I love you)))
+
+^{::clerk/visibility {:code :show :result :show}}
+(mapv emit-clojure-code
+      (run* [program]
+        (membero program love-programs)
+        (executeso program nil '(I love you))))
 
 ;; 这一类查询的重点是:
 ;; 目标不是直接写出程序, 而是先描述"什么程序算对",
@@ -137,7 +155,8 @@
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn make-quine
-  "把 body 放进经典 quine 外壳里."
+  "把 body 放进经典 quine 外壳里.
+  接受 `body`, 返回形如 `((fn [x] body) (quote (fn [x] body)))` 的 quine 程序."
   [body]
   (let [f `(fn [x] ~body)]
     (list f (list 'quote f))))
@@ -156,9 +175,7 @@
 
 ^{::clerk/visibility {:code :show :result :hide}}
 ;; 这里先把 quine 候选预计算出来, 是为了让后面的 query 更聚焦在"搜索结果长什么样".
-;; 当前候选集合很小, 但这里仍然用 `delay` 推迟初始化, 避免 namespace 加载时立刻求值.
-;; 这样做的原因是 notebook 初次加载时无需马上执行筛选计算, 只有真正查看 quine 查询结果时才展开.
-;; 真正执行 query 时, 再通过 `force` 取出 `[body program]` 向量对.
+;; 当前候选集合很小, 但这里仍然用 `delay` 推迟初始化, 避免 namespace 加载时立刻求值; 真正执行 query 时, 再通过 `force` 取出 `[body program]` 向量对.
 (def quine-programs
   (delay (build-quine-programs)))
 
@@ -166,11 +183,18 @@
 (run* [q]
   (membero q (force quine-programs)))
 
+^{::clerk/visibility {:code :show :result :show}}
+(mapv (fn [[body program]]
+        {:body (emit-clojure-code body)
+         :program (emit-clojure-code program)})
+      (run* [q]
+        (membero q (force quine-programs))))
+
 ;; 上面的结果会告诉我们:
 ;; 在这一小组候选 `body` 中,
-;; `(list x (list (quote quote) x))` 正好能拼出一个 quine.
+;; `(list x (list (quote quote) x))` 正好能拼出一个 Clojure quine.
 
-;; ## 3. "找一个程序, 使它把 X 变成 Y"
+;; ## 3. "找一个 Clojure 程序, 使它把 X 变成 Y"
 ;;
 ;; 这就是程序归纳(program synthesis)里最经典的提问方式:
 ;; - 给输入样例 X
@@ -200,6 +224,14 @@
     (membero program transform-programs)
     (executeso program x y)))
 
+^{::clerk/visibility {:code :show :result :show}}
+(let [x '(I (love you))
+      y '(I love you)]
+  (mapv emit-clojure-code
+        (run* [program]
+          (membero program transform-programs)
+          (executeso program x y))))
+
 ;; 这个例子里, 系统会找到:
 ;; `(cons (first input) (second input))`
 ;;
@@ -211,9 +243,9 @@
 ^{::clerk/visibility {:code :hide :result :show}}
 (clerk/table
  {:head ["场景" "核心想法" "这页 notebook 的做法"]
-  :rows [["自动生成目标程序" "把程序本身当成搜索对象" "在有限候选空间里搜索能得到 `(I love you)` 的程序"]
-         ["自动生成 quine" "让程序结果等于程序自身" "固定 quine 外壳, 把 `body` 留给搜索"]
-         ["找 X -> Y 的程序" "用输入输出样例约束程序" "在小语言里搜索满足转换条件的程序"]]})
+  :rows [["自动生成目标程序" "把程序本身当成搜索对象" "在有限候选 Clojure form 里搜索能得到 `(I love you)` 的程序"]
+         ["自动生成 quine" "让程序结果等于程序自身" "固定 Clojure quine 外壳, 把 `body` 留给搜索"]
+         ["找 X -> Y 的程序" "用输入输出样例约束程序" "在小型 Clojure 子集里搜索满足转换条件的程序"]]})
 
 ^{::clerk/visibility {:code :hide :result :show}}
 (clerk/md "
@@ -221,11 +253,11 @@
 
 如果你后面想把这页继续推向真正的 miniKanren 高级主题, 可以按这个顺序加深:
 
-1. 把 `tiny-eval` 逐步改写成真正 relational 的 `evalo`.
+1. 把 `tiny-eval` 逐步改写成真正 relational 的 `evalo`, 覆盖更完整的 Clojure 子集.
 2. 把有限候选模板, 改成按深度递归生成 AST.
 3. 不只给一组 `X -> Y`, 而是给多组样例, 让程序搜索更稳定.
 4. 再进一步接到 type constraint, 有限域约束或解释器特化.
 
 从教学角度看, 这三个例子很适合帮助读者建立一个直觉:
-logic programming 不只是'查数据', 也可以开始'查程序'.
+logic programming 不只是 "查数据", 也可以开始 "查 Clojure 程序".
 ")

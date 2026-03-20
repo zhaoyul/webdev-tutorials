@@ -54,9 +54,9 @@
 
 ### 6. miniKanren 扩展场景
 - [mini_kanren_extensions.clj](mini_kanren_extensions.clj)
-  - 自动生成 `(I love you)` 的程序
-  - 自动生成 quine
-  - "找一个程序, 使它把 X 变成 Y"
+  - 自动生成 `(I love you)` 的 Clojure 程序
+  - 自动生成 Clojure quine
+  - "找一个 Clojure 程序, 使它把 X 变成 Y"
 
 ## 支撑模块
 - [common.clj](common.clj) - 公共事实表与展示辅助函数
