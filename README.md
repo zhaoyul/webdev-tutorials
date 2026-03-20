@@ -58,6 +58,7 @@
 - `notebooks/core_logic/beginner.clj`：补充 wiki Beginner 路径的基础概念与列表 relation
 - `notebooks/core_logic/intermediate.clj`：补充 wiki Intermediate 路径的 `defne` / `matche`
 - `notebooks/core_logic/advanced.clj`：补充 wiki Advanced 路径的有限域约束与建模
+- `notebooks/core_logic/mini_kanren_extensions.clj`：miniKanren 的程序生成、quine 与简单程序归纳
 - `notebooks/core_logic/intro.clj`：core.logic 入门与双向查询
 - `notebooks/core_logic/family_relations.clj`：用亲属关系建立递归 relation
 - `notebooks/core_logic/applications.clj`：权限推导、人员匹配与有限域约束
