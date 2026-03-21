@@ -1,7 +1,7 @@
 ^#:nextjournal.clerk{:visibility {:code :hide} :toc true}
 (ns core_logic.mini_kanren_extensions
   "miniKanren 扩展示例: 程序生成, quine 与简单程序归纳."
-  (:require [clojure.core.logic :refer [== membero project run*]]
+  (:require [clojure.core.logic :refer [== conde fresh membero project run*]]
             [nextjournal.clerk :as clerk]))
 
 ;; # miniKanren 的三个典型扩展场景
@@ -107,33 +107,84 @@
 
 ;; ## 1. 自动生成 `(I love you)` 的 Clojure 程序
 ;;
-;; 最简单的做法, 是先定义一组很小的程序模板,
-;; 然后让 logic search 自动挑出"运行结果刚好等于目标"的候选者.
+;; 如果直接把"完整程序列表"手写出来, 会显得太像在做枚举.
+;; 为了更接近 miniKanren 常见的工作方式, 这里改成:
+;; - 先定义一些更小的 Clojure form 片段;
+;; - 再按几种结构把它们拼成候选程序;
+;; - 最后用执行结果约束, 自动筛掉不符合目标的候选.
 
 ^{::clerk/visibility {:code :show :result :hide}
-  :doc "用于演示自动生成 `(I love you)` 程序的候选模板集合."}
-(def love-programs
-  ['(quote (I love you))
-   '(list (quote I) (quote love) (quote you))
-   '(cons (quote I) (quote (love you)))
-   '(cons (quote I)
-          (cons (quote love)
-                (cons (quote you) (quote ()))))])
+  :doc "更接近 miniKanren 风格的 `(I love you)` 程序构造片段."}
+(def love-atoms
+  {:i '(quote I)
+   :love '(quote love)
+   :you '(quote you)})
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn love-tailo
+  "生成 love 程序里可复用的 tail 片段关系.
+  这里有意混入一个错误候选 `(quote (you love))`, 让后面的约束筛选更像 miniKanren 的搜索."
+  [tail]
+  (conde
+    [(== tail '(quote (love you)))]
+    [(fresh [love you]
+       (== love (:love love-atoms))
+       (== you (:you love-atoms))
+       (== tail (list 'list love you)))]
+    [(fresh [love you]
+       (== love (:love love-atoms))
+       (== you (:you love-atoms))
+       (== tail (list 'cons love
+                      (list 'cons you '(quote ())))))]
+    [(== tail '(quote (you love)))]))
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn love-programo
+  "生成若干候选 Clojure 程序, 再交给后续约束筛选.
+  这里既保留成功候选, 也保留失败候选; 末尾那个 `(list love i you)` 分支就是故意保留的失败候选,
+  让搜索过程更像原始 miniKanren 的试探方式."
+  [program]
+  (conde
+    [(== program '(quote (I love you)))]
+    [(fresh [i love you]
+       (== i (:i love-atoms))
+       (== love (:love love-atoms))
+       (== you (:you love-atoms))
+       (== program (list 'list i love you)))]
+    [(fresh [i tail]
+       (== i (:i love-atoms))
+       (love-tailo tail)
+       (== program (list 'cons i tail)))]
+    [(fresh [love i you]
+       (== love (:love love-atoms))
+       (== i (:i love-atoms))
+       (== you (:you love-atoms))
+       (== program (list 'list love i you)))]))
+
+^{::clerk/visibility {:code :show :result :show}}
+(mapv emit-clojure-code
+      (run* [program]
+        (love-programo program)))
+
+;; 上面先展示"搜索空间里都有什么候选".
+;; 其中像 `(cons (quote I) (quote (you love)))` 和 `(list (quote love) (quote I) (quote you))`
+;; 这样的程序会继续流到下一步, 但会被 `executeso` 的输出约束排除掉,
+;; 因为它们的结果分别是 `(I you love)` 和 `(love I you)`, 与目标 `(I love you)` 不符.
 
 ^{::clerk/visibility {:code :show :result :show}}
 (run* [program]
-  (membero program love-programs)
+  (love-programo program)
   (executeso program nil '(I love you)))
 
 ^{::clerk/visibility {:code :show :result :show}}
 (mapv emit-clojure-code
       (run* [program]
-        (membero program love-programs)
+        (love-programo program)
         (executeso program nil '(I love you))))
 
 ;; 这一类查询的重点是:
-;; 目标不是直接写出程序, 而是先描述"什么程序算对",
-;; 再让 miniKanren 风格的搜索去找它.
+;; 目标不是直接写出完整答案, 而是先描述"允许哪些程序结构"和"什么程序算对",
+;; 再让 miniKanren 风格的搜索去试探这些候选, 并自动保留满足约束的结果.
 
 ;; ## 2. 自动生成 quine
 ;;
