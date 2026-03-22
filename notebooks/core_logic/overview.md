@@ -54,6 +54,8 @@
 
 ### 6. miniKanren 扩展场景
 - [mini_kanren_extensions.clj](mini_kanren_extensions.clj)
+  - `==` / `!=` / `symbolo` / `numbero` / `absento`
+  - `fresh` / `conde` 与 reified logic variable
   - 自动生成 `(I love you)` 的 Clojure 程序
   - 自动生成 Clojure quine
   - "找一个 Clojure 程序, 使它把 X 变成 Y"

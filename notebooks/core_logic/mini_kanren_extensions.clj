@@ -1,15 +1,21 @@
 ^#:nextjournal.clerk{:visibility {:code :hide} :toc true}
 (ns core_logic.mini_kanren_extensions
   "miniKanren 扩展示例: 程序生成, quine 与简单程序归纳."
-  (:require [clojure.core.logic :refer [== conde fresh membero project run*]]
+  (:require [clojure.core.logic :refer [!= == absento conde fresh membero numbero project run run* symbolo]]
             [nextjournal.clerk :as clerk]))
 
-;; # miniKanren 的三个典型扩展场景
+;; # miniKanren 的基础与扩展场景
 ;;
 ;; 真正让 miniKanren 变得很有趣的地方, 往往不是"查一个答案",
 ;; 而是把"程序"本身也当成搜索对象.
 ;;
-;; 这一页用一个极小的 Clojure 子集演示三个经典方向:
+;; 不过在进入程序生成之前, 先要看到 miniKanren 自己这门小语言是怎么工作的:
+;; - 用 `==` 做统一;
+;; - 用 `!=`、`symbolo`、`numbero`、`absento` 叠加约束;
+;; - 用 `fresh` 引入新变量;
+;; - 用 `conde` 表达多条搜索分支.
+;;
+;; 然后这一页再用一个极小的 Clojure 子集演示三个经典方向:
 ;; - 自动生成一个会得到 `(I love you)` 的 Clojure 程序.
 ;; - 自动生成 Clojure quine.
 ;; - "找一个 Clojure 程序, 使它把 X 变成 Y".
@@ -105,7 +111,77 @@
   [program]
   (pr-str program))
 
+;; ## 0. 先看 miniKanren 这门小语言本身
+;;
+;; 在很多 miniKanren 演讲或 live demo 里, 往往会先从几块最小积木开始:
+;; `==`、`!=`、`symbolo`、`numbero`、`absento`、`fresh`、`conde`.
+;; 先熟悉这些构件, 再去看"搜索程序"就自然很多.
+
+^{::clerk/visibility {:code :hide :result :show}}
+(clerk/table
+ {:head ["构件" "作用"]
+  :rows [["==" "统一两个值或结构"]
+         ["!=" "声明两个值永远不能相同"]
+         ["symbolo / numbero" "给逻辑变量加上类型约束"]
+         ["fresh" "引入新的局部逻辑变量"]
+         ["conde" "表达多条可能的搜索分支"]
+         ["absento" "禁止某个符号出现在结构里"]]})
+
+;; 最基本的操作是统一: 不是"赋值", 而是声明两个结构必须一致.
+^{::clerk/visibility {:code :show :result :show}}
+(run* [q]
+  (== q '(mini kanren)))
+
+;; `!=` 是最小的"反统一"约束: 它会保留搜索空间, 但排除不允许的答案.
+^{::clerk/visibility {:code :show :result :show}}
+(run* [q]
+  (membero q '(mini kanren logic))
+  (!= q 'logic))
+
+;; `symbolo` 和 `numbero` 很适合先把候选域定小, 再叠加类型约束.
+^{::clerk/visibility {:code :show :result :show}}
+(run* [q]
+  (fresh [sym num]
+    (membero sym '(mini kanren 42))
+    (symbolo sym)
+    (membero num '(oops 7 9))
+    (numbero num)
+    (== q [sym num])))
+
+;; `fresh` 负责引入中间变量, `conde` 负责声明多条分支.
+^{::clerk/visibility {:code :show :result :show}}
+(run* [q]
+  (fresh [op arg]
+    (conde
+      [(== op 'quote) (== arg 'mini)]
+      [(== op 'quote) (== arg 'kanren)])
+    (== q (list op arg))))
+
+;; 当结果里出现 `_.0`、`_.1` 这类名字时, 它们不是字面量,
+;; 而是"还没被完全约束住"的逻辑变量经过 reify 之后的占位名.
+^{::clerk/visibility {:code :show :result :show}}
+(run 3 [q]
+  (fresh [x y]
+    (== q [x y])
+    (membero x '(mini kanren logic))))
+
+;; `absento` 可以禁止某个符号出现在任意深度的结构里.
+^{::clerk/visibility {:code :show :result :show}}
+(run* [q]
+  (fresh [candidate]
+    (membero candidate '((mini kanren) (logic programming) (logic mini)))
+    (absento 'kanren candidate)
+    (== q candidate)))
+
+;; 上面这些例子展示的, 就是原始 miniKanren 最核心的工作方式:
+;; 先写约束, 再让系统枚举并过滤满足约束的答案.
+;; 接下来我们只把"答案"从普通数据, 换成"一段 Clojure 程序".
+
 ;; ## 1. 自动生成 `(I love you)` 的 Clojure 程序
+;;
+;; 有了前面的积木之后, 这里就可以把搜索对象升级成"程序"本身.
+;; 底层原理并没有变化: 仍然是 `fresh` / `conde` / `==` 一起描述约束,
+;; 只不过现在约束的是"什么 Clojure form 算一个合格程序".
 ;;
 ;; 如果直接把"完整程序列表"手写出来, 会显得太像在做枚举.
 ;; 为了更接近 miniKanren 常见的工作方式, 这里改成:
