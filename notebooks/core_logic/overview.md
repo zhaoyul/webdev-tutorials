@@ -52,6 +52,14 @@
   - 优先写可逆关系
   - 先关系后宿主语言
 
+### 6. miniKanren 扩展场景
+- [mini_kanren_extensions.clj](mini_kanren_extensions.clj)
+  - `==` / `!=` / `symbolo` / `numbero` / `absento`
+  - `fresh` / `conde` 与 reified logic variable
+  - 自动生成 `(I love you)` 的 Clojure 程序
+  - 自动生成 Clojure quine
+  - "找一个 Clojure 程序, 使它把 X 变成 Y"
+
 ## 支撑模块
 - [common.clj](common.clj) - 公共事实表与展示辅助函数
 
@@ -62,7 +70,8 @@
 1. `beginner.clj`
 2. `intermediate.clj`
 3. `advanced.clj`
-4. `intro.clj` / `family_relations.clj` / `applications.clj` / `techniques.clj`
+4. `mini_kanren_extensions.clj`
+5. `intro.clj` / `family_relations.clj` / `applications.clj` / `techniques.clj`
 
 如果你已经熟悉 Datomic 里的 Datalog 查询, 可以把本专题看作"把查询语言再向前走一步":
 不仅能描述"查什么", 还可以描述"怎样生成满足约束的数据".
