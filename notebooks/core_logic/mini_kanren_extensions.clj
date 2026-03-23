@@ -1,7 +1,7 @@
 ^#:nextjournal.clerk{:visibility {:code :hide} :toc true}
 (ns core_logic.mini_kanren_extensions
   "miniKanren 扩展示例: 程序生成, quine 与简单程序归纳."
-  (:require [clojure.core.logic :refer [!= == absento conde fresh membero numbero project run run* symbolo]]
+  (:require [clojure.core.logic :refer [!= == conde fresh pred run run*]]
             [nextjournal.clerk :as clerk]))
 
 ;; # miniKanren 的基础与扩展场景
@@ -23,6 +23,54 @@
 ;; 为了保持 notebook 可读, 这里不直接实现完整的 relational interpreter,
 ;; 而是采用"有限候选 Clojure form + 极小解释器 + core.logic 搜索"的方式.
 ;; 这里返回的搜索结果本身就是 Clojure form, 可以直接当成 Clojure 程序来读.
+
+;; 下面这几个关系名在 miniKanren 资料里很常见,
+;; 但并不是 `clojure.core.logic` 1.1.1 默认就能直接 `refer` 出来的名字.
+;; 为了让这一页 notebook 自包含, 这里给出教学版的本地实现.
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn impossibleo
+  "一个永远失败的最小 goal 构造器, 用来结束递归分支.
+  这里沿用 miniKanren 常见的 `...o` 命名习惯, 而不是 Clojure 里常见的 `?` 风格."
+  []
+  (fresh [x]
+    (== x ::impossible)
+    (!= x ::impossible)))
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn membero
+  "教学版 `membero`.
+  在有限候选集合里, 递归地把 `q` 与每个元素做统一.
+  这里假设 `coll` 已经是普通 Clojure 集合, 主要用于教学示例里的有限搜索空间."
+  [q coll]
+  (if-let [items (seq coll)]
+    (conde
+      [(== q (first items))]
+      [(membero q (rest items))])
+    (impossibleo)))
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn symbolo
+  "教学版 `symbolo`.
+  用宿主语言谓词约束结果必须是 symbol."
+  [q]
+  (pred q symbol?))
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn numbero
+  "教学版 `numbero`.
+  用宿主语言谓词约束结果必须是 number."
+  [q]
+  (pred q number?))
+
+^{::clerk/visibility {:code :show :result :hide}}
+(defn absento
+  "教学版 `absento`.
+  要求 `sym` 不能出现在 `value` 的任意嵌套结构里.
+  这里故意保持实现简单, 主要面向教学示例里的小型 list/vector 嵌套结构,
+  不适合大型或深层嵌套数据."
+  [sym value]
+  (pred value #(not-any? #{sym} (tree-seq coll? seq %))))
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn describe-value-type
@@ -99,10 +147,14 @@
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn executeso
   "建立 Clojure 程序在给定输入上运行后得到指定输出的关系.
-  `program` 是待执行程序, `input` 会绑定到程序里的 `input`, `output` 是期望结果."
+  `program` 是待执行程序, `input` 会绑定到程序里的 `input`, `output` 是期望结果.
+  这里用 `pred` 在有限候选程序集合上做过滤, 目的是保留 notebook 的教学可读性.
+  如果某个候选程序求值时报错, 就把它当成不满足约束的候选并跳过."
   [program input output]
-  (project [program input]
-    (== output (tiny-eval program {'input input}))))
+  (pred program #(try
+                   (= output (tiny-eval % {'input input}))
+                   (catch Exception _
+                     false))))
 
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn emit-clojure-code
