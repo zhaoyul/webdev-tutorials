@@ -337,7 +337,7 @@
   "把 body 放进经典 quine 外壳里.
   接受 `body`, 返回形如 `((fn [x] body) (quote (fn [x] body)))` 的 quine 程序."
   [body]
-  (let [f `(fn [x] ~body)]
+  (let [f (list 'fn '[x] body)]
     (list f (list 'quote f))))
 
 ^{::clerk/visibility {:code :show :result :hide}}
@@ -438,5 +438,5 @@
 4. 再进一步接到 type constraint, 有限域约束或解释器特化.
 
 从教学角度看, 这三个例子很适合帮助读者建立一个直觉:
-logic programming 不只是 "查数据", 也可以开始 "查 Clojure 程序".
+logic programming 不只是 ``查数据'', 也可以开始 ``查 Clojure 程序''.
 ")
