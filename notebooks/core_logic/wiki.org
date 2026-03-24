@@ -1,0 +1,1732 @@
+#+TITLE: EWW Buffers
+#+OPTIONS: toc:nil
+
+* [[https://github.com/clojure/core.logic/wiki/A-Core.logic-Primer][入门 Core.logic Primer]]
+
+Introduction (简介)
+
+
+这是一个自上而下的 core.logic 介绍, 试图带您进入理解" 逻辑编程到底是什么" 的顿悟(AHA!)时刻.
+
+我们首先对 core.logic 的目的和基本语法进行高层次的概述, 然后展示一个逻辑编程试图回答的此类问题的小例子. 有了这些理解后, 我们将从基本逻辑操作符开始构建简单的程序.
+
+这(希望)是进一步探索 core.logic 功能的系列文章中的第一篇.
+
+Logic Programming (逻辑编程)
+
+
+逻辑程序由一个或多个逻辑表达式以及一个求解引擎(或求解器)组成. 逻辑表达式是一组逻辑变量和对这些变量的约束. 逻辑表达式被输入到逻辑引擎中, 引擎返回所有满足表达式中约束的逻辑变量的赋值. 一般来说, 您编写逻辑表达式, 而求解器是现成的(core.logic 就是求解器).
+
+这种设置类似于 SQL 编程: SQL 语句是一种关系型语句, 它被输入到关系型引擎中, 引擎返回数据库中所有与该语句一致的数据.
+
+Core.logic syntax (Core.logic 语法)
+
+
+一个 core.logic 程序是这样编写的:
+
+#+BEGIN_SRC clojure
+ (run* [logic-variable]
+   &logic-expressions)
+#+END_SRC
+
+这意味着: 接受一组逻辑表达式(logic-expressions), 将它们放入求解器中运行, 并返回所有满足该逻辑表达式的 `logic-variable` 的值.
+
+Logic Expression (逻辑表达式)
+
+
+逻辑表达式包含一组逻辑变量, 以及一组对这些逻辑变量可以假设的值的约束.
+
+Logic Variables (逻辑变量)
+
+
+逻辑变量(或 lvar)是一个包含模糊值的变量. 也就是说, 该变量可以取多个值, 但一次只能取一个. 具体如何做到这一点超出了本简介的范围.
+
+Constraints (约束)
+
+
+约束是限制逻辑变量(lvars)可能假设的值的表达式.
+
+这里用一个例子说明会很有帮助. 以下 core.logic 程序:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (membero q [1 2 3])
+   (membero q [2 3 4]))
+#+END_SRC
+
+读作: 运行逻辑引擎并返回所有满足" q 是向量 (1 2 3) 的成员并且也是向量 (2 3 4) 的成员" 的 q 的值. 因此, 它将返回 (2 3), 表明 q 可以是 2 或 3 并满足约束. `run*` 的返回值是一个列表, 其中每个元素都是 q 可能取的值之一.
+
+这就是逻辑编程的全部内容: 声明逻辑变量并定义对它们的约束, 然后让逻辑引擎找出满足约束的变量的值.
+
+Note on naming conventions (关于命名约定的注意事项)
+
+
+我们将讨论的许多用于 core.logic 的函数(比如 `membero`)都有些特殊--事实上, 它们在 `run/run*` 之外几乎没有意义. 为了区分这些特殊函数(关系)与常规的 Clojure 函数, 我们通常在名称后附加一个 "o", "e", "u" 或 "a". 起初这可能看起来很奇怪--但请放心, 随着您进一步深入 core.logic, 您会发现将函数式编程与逻辑编程混合在一起是非常方便的, 并且这种命名约定简化了阅读更复杂的 core.logic 程序的难度.
+
+Pattern Matching (模式匹配)
+
+
+core.logic 的某些部分支持模式匹配(它可能与 core.match 库有一些精神上的联系).
+
+#+BEGIN_SRC clojure
+ ; 一些模式的示例:
+
+ ; 一个符号
+ 'x
+
+ ; 一个向量
+ [1 2 3]
+
+ ; 一个包含向量的集合
+ '(4 [5 6] 7)
+#+END_SRC
+
+请注意, 模式通常被包裹在向量中, 因此通常会有类似 `[[1]]` 这样的向量模式结构.
+
+模式还提供了语法糖, 使得在 core.logic 中描述集合变得容易. 有两个保留符号在模式中具有特殊含义: `_` 和 `.`.
+
+lvar
+
+
+模式对符号进行特殊处理. 具有局部绑定(例如函数参数, 或由诸如 `let` 或 `fresh` 之类的词声明)的符号将作为正常符号处理. 相比之下, 局部未定义的符号会被隐含地当作新命名的逻辑变量(即 lvar)处理.
+
+符号 `_` 更加特殊, 它完全忽略局部绑定. 模式中每次出现的 `_` 都会被转换为一个 lvar--但每次都是一个新的. 因此, 模式 `[! ! !]`(一个隐式的新 lvar 重复3次)可以与 `[1 1 1]` 统一(unify), 但不能与 `[1 2 3]` 统一. 模式 `[_ _ _]` 由于是 3 个不同的 lvar, 因此可以与其中任何一个统一.
+
+lcons
+
+
+`lcons`(逻辑 cons, 不是 Icons)语法可用于描述集合的任何模式部分中. 该集合模式包含一个 `.` 符号, 例如 `[h1 h2 h3 . t2]`. 模式中的每个符号描述了集合中相应的元素. 唯一的例外是最后一个符号, 它描述了集合中除了已被关联的变量之外的其余部分.
+
+一个例子可以更清晰地说明这一点:
+
+传统警告: 传统上, `.` 将作为向量中倒数第二个条目, 以强调它捆绑了尾部元素. 这个例子打破了传统, 为达到效果把它放在了前面, 以其它文档可能不会建议的选项让您惊叹!
+
+#+BEGIN_SRC clojure
+ (logic/run* [q a b c d e]
+   (logic/== q (range 10))
+   (logic/matche [q]
+    [[[. a b c d e]]]))
+ ; => ([(0 1 2 3 4 5 6 7 8 9) 0 1 2 3 (4 5 6 7 8 9)])
+#+END_SRC
+
+符号 a/b/c/d 与集合的前 4 个元素进行了统一, e 与剩余的元素进行了统一. 如果集合足够小, 最后一个符号可能会与空列表统一.
+
+Examples (例子)
+
+#+BEGIN_SRC clojure
+ (def a 10) ; 不是局部绑定, 不影响以下示例
+ ;;  展示 lcons 和 lvar
+ (logic/run* [q]
+     (logic/matche [q]
+      ([ [a . b] ])))
+ ; => ((_0 . _1)) ; a 和 b 都是新的, 隐式的 lvar, 因为它们没有在局部绑定, 并且没有值使它们统一.
+ ;;  展示局部绑定
+ (let [a 8]
+   (logic/run* [q]
+     (logic/matche [q]
+      ([ [a . b] ]))))
+ ; => ((8 . _0)) ; a 在局部绑定, 所以它的值被使用, 而不是创建一个新的 lvar.
+ ;;  展示使用 defne 根据模式创建新目标
+ (logic/defne head-is-1 [q]
+   ([(1 . _)]))
+ (logic/defne tail-is-7-8-9 [q]
+   ([[_ . [7 8 9]]]))
+ (logic/run 2 [q]
+   (tail-is-7-8-9 q)
+   (head-is-1 q))
+ ; => (1 7 8 9)
+#+END_SRC
+
+How it' s done (它是如何做到的)
+
+
+我们现在进一步探索每一个概念, 以便更好地理解.
+
+More on Logic Variables (关于逻辑变量的更多信息)
+
+
+逻辑变量类似于 Clojure 中的局部变量. 您可以声明它们的值, 它们是词法作用域的, 且不可重新赋值. 大部分的相似之处仅此而已.
+
+例如, 有时一个逻辑变量可能永远不会真正取得特定的值. 逻辑变量的一个特殊值是 `_.N`, 其中 N 是某个数字. 这意味着" 任何东西" , 就像 shell 中的 `*` 表示" 任何东西" 一样. 这意味着逻辑变量可以取任何值并仍然满足约束. 有时该变量被称为" 非基础变量(nonground)" . 我们将称" 非基础变量" 为" 新鲜的(fresh)" . 此外, 如果您有两个变量可以是任何东西, 它们的值将像 `_.0` 和 `_.1`, 这意味着每个都可以是任何东西, 并且它们彼此不同. 如果它们都是 `_.0`, 这意味着它们可以是任何东西, 但必须彼此相等.
+
+在程序中引入逻辑变量有两种方式.
+
+第一种是在以下表达式中引入的主查询变量:
+
+#+BEGIN_SRC clojure
+ (run* [query-variable] ...)
+#+END_SRC
+
+它的值将成为 `(run* ...)` 表达式的返回值. 只能有一个这样的主查询变量, 我们使用 `q` 来表示查询变量. 在您自己的逻辑程序中, 请随意使用更具描述性的名称.
+
+引入逻辑变量的另一种方法是使用 `fresh` 操作符, 它很像普通 Clojure 中的 `let`. 例如下面的代码段:
+
+#+BEGIN_SRC clojure
+ (fresh [a b c] &logic-expressions)
+#+END_SRC
+
+引入了三个逻辑变量 a, b 和 c, 它们可以在 logic-expressions 中使用.
+
+More on Constraints (关于约束的更多信息)
+
+
+逻辑表达式约束逻辑变量的值. 所有在 `run*` 下面的表达式都以逻辑与(AND, 有时称为合取, conjunction)的方式组合在一起. 所以在这个例子中:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (constraint-1)
+   (constraint-2)
+   (constraint-3))
+#+END_SRC
+
+每个表达式都以某种方式约束 q, `run*` 将返回满足表达式中所有三个约束的 q 的值.
+
+Goals (目标)
+
+
+core.logic 基于 miniKanren. miniKanren 规定我们以特定方式定义我们的约束. 每一个都是一个要么成功(succeeds)要么失败(fails)的" 目标(goal)" .
+
+逻辑引擎探索所有逻辑变量可能的值, 并在整体逻辑表达式成功的每种情况下返回 q 的值. 在上面的例子中, 所有的目标都是合取的, 因此当且仅当所有目标都成功时, 表达式才成功.
+
+The core.logic operators (core.logic 操作符)
+
+
+miniKanren 以及 core.logic 基于三个核心操作符: `fresh`, `==` 和 `conde`.
+
+fresh
+
+
+我们已经看到了 `fresh`, 它将新的逻辑变量以新鲜(未绑定)的状态引入到逻辑程序中.
+
+unify, or == (统一, 或 ==)
+
+
+最基本的操作符是 `==`, 或者叫统一(unify):
+
+#+BEGIN_SRC clojure
+ (== lvar1 lvar2)
+#+END_SRC
+
+它的作用是约束每个逻辑变量, 使它们具有相同的可能值集合. 它是一个目标, 如果 lvar1 可以变得等于 lvar2, 则目标成功, 否则失败.
+
+Unification of a single lvar with a literal (单个 lvar 与字面量的统一)
+
+
+在最简单的情况下, 您可以为 lvar1 或 lvar2 使用 Clojure 字面量. 例如:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (== q 1))
+#+END_SRC
+
+如果 q 可以被赋予值 1, 则成功. 由于 `run*` 以新鲜状态引入 q, 这是可能的. 因此, 统一目标成功, `run*` 返回成功的 q 值列表, 也就是 `(1)`. 这意味着在此约束下, q 可以假设的可能值集合仅为整数 1. 一种心理上的捷径是将 unify 视为将 q 约束为等于 1.
+
+您还可以对更复杂的数据类型进行统一:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (== q {:a 1 :b 2}))
+#+END_SRC
+
+计算结果为: `({:a 1, :b 2})`. 同样地,
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (== {:a q :b 2} {:a 1 :b 2}))
+#+END_SRC
+
+返回 `(1)`, 这相当令人兴奋.
+
+最后, `==` 的参数顺序无关紧要:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (== 1 q))
+#+END_SRC
+
+同样返回 `(1)`.
+
+注意(Gotcha): 虽然逻辑变量打印出来看起来像一个列表, 但这不是逻辑变量的字面语法(读取器不会读取它); 事实上, 并没有逻辑变量的字面语法. 所以这个程序:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (== q '(1 2 3)))
+#+END_SRC
+
+它的计算结果为 `((1 2 3))`, 而不是 `(1 2 3)`. 也就是说, q 只能取列表 `(1 2 3)` 这个值, 而不是 1 或 2 或 3 的其中之一, 后者可能是您原本预期的.
+
+如前所述, `run*` 寻找满足所有约束的解. 这是因为 `run*` 将目标组合成逻辑合取. 因此,
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (== q 1)
+   (== q 2))
+#+END_SRC
+
+返回 `()`: 没有能够满足所有约束的 q 的值. 也就是说, q 不可能同时等于 1 和等于 2.
+
+Unification of two lvars (两个 lvar 的统一)
+
+
+当您对两个逻辑变量进行统一时, 该操作约束每个变量具有相同的可能值集合. 心理上的捷径是认为统一是两个逻辑变量值集合的交集.
+
+为了演示这一点, 我们必须稍微取巧地不按顺序来. 正如前面提到的, 没有逻辑变量的字面语法, 所以要限制 lvar1 的值为 `(1, 2, 3)`, 我们必须引入一个目标, `membero`:
+
+#+BEGIN_SRC clojure
+ (membero x l)
+#+END_SRC
+
+就目前而言(这虽然对但并非全貌), 将它视为约束 x 是列表 l 的元素. 所以这个程序:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (membero q [1 2 3]))
+#+END_SRC
+
+计算结果为 `(1, 2, 3)`, 意味着 q 可以是 1 或 2 或 3, 正如我们所愿. 现在我们有完整的演示:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+     (membero q [1 2 3])
+     (membero q [3 4 5]))
+#+END_SRC
+
+首先我们使用 `run*` 并要求它在一些约束条件下返回 lvar q 的值. 在第一个约束中, 我们约束 q 具有值 `(1, 2, 3)`, 也就是说, q 可以是 1 或 2 或 3. 然后我们约束相同的 lvar q 具有值 `(3, 4, 5)`, 也就是说, q 可以是 3 或 4 或 5. 为了满足这两个约束, q 只能是 3, 所以 `run*` 返回 `(3)`. 用统一编写同样事情的另一种方法是:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (fresh [a]
+     (membero a [1 2 3])
+     (membero q [3 4 5])
+     (== a q)))
+#+END_SRC
+
+这里我们通过 `fresh` 引入了一个额外的 lvar `a`, 并将其约束为 1 或 2 或 3. 然后我们将 q 约束为 3 或 4 或 5. 最后, 我们将 a 和 q 统一, 它们留下的值是其交集: `(3)`.
+
+Core.logic is Declarative (Core.logic 是声明式的)
+
+
+现在来点神奇的: 就 `(run* ...)` 表达式的值而言, 约束的顺序并不重要. 所以这些程序:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (fresh [a]
+     (membero q [1 2 3])
+     (membero a [3 4 5])
+     (== q a)))
+ (run* [q]
+   (fresh [a]
+     (membero a [3 4 5])
+     (== q a)
+     (membero q [1 2 3])))
+ (run* [q]
+   (fresh [a]
+     (== q a)
+     (membero a [3 4 5])
+     (membero q [1 2 3])))
+#+END_SRC
+
+它们的结果全都是 `(3)`.
+
+The final operator, conde (最终的操作符, conde)
+
+
+我们已经介绍了 `run*`, `fresh` 和 `==`, 只剩下一个操作符: `conde`. 毫不奇怪, `conde` 的行为非常像 `cond`, 是逻辑或(OR, 析取). 其语法为:
+
+#+BEGIN_SRC clojure
+ (conde &clauses)
+#+END_SRC
+
+其中每一个 clause(子句)是一系列由合取组合的至少一个目标的序列. `conde` 对于独立成功的每个子句都会成功. 您可以这样理解一个 `conde` 目标:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conde
+     [goal1 goal2 ...]
+     ...))
+#+END_SRC
+
+有点像:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (OR
+     [goal1 AND goal2 AND ...]
+     ...))
+#+END_SRC
+
+进一步的例子可能会有所帮助:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conde
+     [succeed]))
+#+END_SRC
+
+返回 `(_.0)`. `conde` 成功了, 因为 `succeed` 成功了, 但是 q 并未参与, 因此它可以取任何值.
+
+子句中可以有任意数量的目标:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conde
+     [succeed succeed succeed succeed]))
+#+END_SRC
+
+也返回 `(_.0)`, `conde` 子句中的每一项都成功, 并且它们在逻辑合取中结合, 因此成功. 然而,
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conde
+     [succeed succeed fail succeed]))
+#+END_SRC
+
+返回 `()`, 因为由于子句中的 `fail`, 合取导致整个子句失败, 从而 `conde` 失败. 因此没有任何 q 的值能导致该表达式成功.
+
+此外, `conde` 独立地决定每个子句的成功或失败:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (conde
+    [succeed]
+    [succeed]))
+#+END_SRC
+
+返回 `(_.0 _.0)`. 这里有两个值, 因为 `conde` 成功了两次, 每个子句一次.
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (conde
+    [succeed]
+    [fail]))
+#+END_SRC
+
+返回 `(_.0)` 因为 `conde` 只在第一个子句成功.
+
+上述例子显示了逻辑结构, 让我们看看一些输出结果.
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (conde
+    [succeed (== q 1)]))
+#+END_SRC
+
+返回 `(1)`. 这是因为 `succeed` 和 `(== q 1)` 只有在 q 可以等于 1 的情况下才都成功. 在 `conde` 子句中有两个元素是常见的结构, 因为它让我们想起 `cond`, 但是不要被误导:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (conde
+    [(== q 2) (== q 1)]))
+#+END_SRC
+
+返回 `()`. 如果您期望 `conde` 产生与 `cond` 相同的结果, 您的思维过程可能会错误地认为这会返回 `(1)`. 尽管这看似是从合乎逻辑的前提得出的, 但必须理解这是完全错误的--`conde` 子句中的每个目标是在合取中组合的. 因为 q 不可能同时等于 2 和 1, 该子句失败, 因此 `conde` 失败. 由于没有成功的可能, q 的返回值为 `()`.
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conde
+     [(== q 1)]
+     [(== q 2)]))
+#+END_SRC
+
+返回 `(1 2)`. 此处的不同点在于, 每一个统一都在 `conde` 的不同子句中, 并且每一个都可以独立成功, 从而为 q 产生一个值.
+
+More Goals (更多目标)
+
+
+我们已经看到了这三个操作符之间的相互作用: `fresh`, `conde` 和 `==`, 这些是逻辑编程的原语. core.logic 提供了一些基于这些原语的更高层次的目标, 让我们来看其中一些.
+
+Conso (the Magnificent) (华丽的 Conso)
+
+
+最基础的这些目标之一是 `conso`; 理解了这一点, 其余就迎刃而解. 毫不意外, `conso` 是与 `cons` 等价的逻辑编程版本. 回顾一下:
+
+#+BEGIN_SRC clojure
+ (cons x r)
+#+END_SRC
+
+返回 s, 其中 s 是一个序列, 它的头部元素是 x, 它的剩余部分(rest)是序列 r:
+
+#+BEGIN_SRC clojure
+ (cons 0 [1 2 3])
+#+END_SRC
+
+返回 `(0 1 2 3)`. `conso` 与之非常相似, 只是把" 结果" 序列作为参数传递进去了:
+
+#+BEGIN_SRC clojure
+ (conso x r s)
+#+END_SRC
+
+它是一个仅在 s 是一个头部为 x, 剩余部分为 r 的列表时才成功的函数. 因此, 在逻辑表达式中, 它以这种方式约束 x, r 和 s. 同样, 对于 x, r, s 中的任何一个, 我们既可以使用 lvar, 也可以使用字面量. 所以:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conso 1 [2 3] q))
+#+END_SRC
+
+返回 `((1 2 3))`; 也就是说, q 是唯一只能取列表 `(1 2 3)` 作为值的逻辑变量. 我们请求 `run*` 找出 q 的值, 它是一个头部为 1, 剩余部分为 `(2 3)` 的列表, 于是它找到了 `(1 2 3)`.
+
+现在来些更神奇的:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (conso 1 q [1 2 3]))
+#+END_SRC
+
+返回 `((2 3))`; q 被约束为那样的列表: 当 1 被作为头部添加时, 结果为列表 `(1 2 3)`.
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (conso q [2 3] [1 2 3]))
+#+END_SRC
+
+返回 `(1)`; q 是那个添加到向量 `(2 3)` 头部会导致向量变为 `(1 2 3)` 的元素. 更有趣的是:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (conso 1 [2 q] [1 2 3]))
+#+END_SRC
+
+返回 `(3)`; q 是向量(2个元素)中那个当将 1 添加为其头部时会变为向量 `(1 2 3)` 的元素.
+
+总结一下: `(conso f r s)` 在 `(first s)` 为 f 且 `(rest s)` 为 r 时成功.
+
+Resto
+
+
+`resto` 是 `conso` 的补充:
+
+#+BEGIN_SRC clojure
+ (resto l r)
+#+END_SRC
+
+它约束存在的任何逻辑变量, 使得 r 是 `(rest l)`. 所以:
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (resto [1 2 3 4] q))
+#+END_SRC
+
+返回 `((2 3 4))`. 我们为 `conso` 展示的相同的重新排序和替换在此也适用.
+
+总结一下: `(resto l r)` 在 `(rest l)` 为 r 时成功.
+
+Membero
+
+
+我们之前已经窥探过 `membero`:
+
+#+BEGIN_SRC clojure
+ (membero x l)
+#+END_SRC
+
+它约束存在的任何逻辑变量, 使得 x 是 l 的一个元素.
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (membero q [1 2 3]))
+#+END_SRC
+
+返回 `(1, 2, 3)`; 也就是说, 1 或 2 或 3.
+
+#+BEGIN_SRC clojure
+ (run* [q]
+   (membero 7 [1 3 8 q]))
+#+END_SRC
+
+返回 `(7)`, 这是能使 7 成为 `(1 3 8 q)` 的元素的唯一的 q 值.
+
+总结一下: `(membero x l)` 在 x 是 l 的任何一个成员时成功.
+
+Summary (总结)
+
+
+本简介给出了逻辑编程的基本概念: 它是一组逻辑变量及它们之上的一组约束, 作为求解引擎的输入, 引擎返回满足该组约束的所有一致性解的完整集合.
+
+核心概念是逻辑变量和目标. 逻辑变量是一个能一次呈现出许多不同值的变量. 目标是一个返回成功或失败的函数. 目标被组合到逻辑表达式中. `run*` 在逻辑表达式上调用逻辑引擎, 并返回使该逻辑表达式成功的查询逻辑变量的完整值集合.
+
+* [[https://github.com/clojure/core.logic/wiki/Better-syntax-support][语法优化 Better syntax support]]
+
+当执行 core.logic 中常见的标称(nominal)功能相关的符号操作时, Clojure 的 syntax-quote 远未达到理想状态. 例如, 考虑以下用于描述 pi 演算(pi-calculus)操作语义的 alphaProlog 片段程序:
+
+#+BEGIN_SRC prolog
+  step (tau P) tau_a P.
+  step (sum (P, Q)) A (P') :- step P A P'.
+  step (sum (P, Q)) A (Q') :- step Q A Q'.
+  step (par (P, Q)) A (par (P', Q)) :- step P A P'.
+  step (par (P, Q)) A (par (P, Q')) :- step Q A Q'.
+  step (par (ina,P)) tau_a P.
+  step (par (P,ina)) tau_a P.
+  step (par (P,Q)) tau_a (res (n\par(P',Q')))
+  	:- step' P (n\in_a(X,n)) (n\P'), step' Q (n\out_a(X,n)) (n\Q').
+  step (par (P,Q)) tau_a (res (n\par(P',Q')))
+  	:- step' P (n\out_a(X,n)) (n\P'), step' Q (n\in_a(X,n)) (n\Q').
+
+  step (res (n\P)) A (res (n\P')) :- step P A P', n # A.
+  step (out (X, Y, P)) (out_a (X, Y)) P.
+  step (par (P,Q)) tau_a (par (P'',Q'))  :-
+  	step' P (y\in_a(X,Y)) (y\P'),
+  	step Q (out_a(X,Z)) Q',
+  	rename (y\P',Z,P'').
+  step (par (P,Q)) tau_a (par (P',Q''))  :-
+  	step' Q (y\in_a(X,y)) (y\Q'),
+  	step P (out_a(X,Z)) P',
+  	rename (y\Q',Z,Q'').
+
+  step (rep P) A P' :- step (par (P, (rep P))) A P'.
+#+END_SRC
+
+不计算空白行, 这有 21 行代码.
+
+Nada Amin 将其翻译为 core.logic 的代码目前看起来如下:
+
+#+BEGIN_SRC clojure
+(defn stepo [p a q]
+  (conde
+    [(== `(~'tau ~q) p)
+     (== a 'tau_a)]
+    [(fresh [p1 p2]
+       (== `(~'sum ~p1 ~p2) p)
+       (stepo p1 a q))]
+    [(fresh [p1 p2]
+       (== `(~'sum ~p1 ~p2) p)
+       (stepo p2 a q))]
+    [(fresh [p1 p2 q1]
+       (== `(~'par ~p1 ~p2) p)
+       (== `(~'par ~q1 ~p2) q)
+       (stepo p1 a q1))]
+    [(fresh [p1 p2 q2]
+       (== `(~'par ~p1 ~p2) p)
+       (== `(~'par ~p1 ~q2) q)
+       (stepo p2 a q2))]
+    [(== `(~'par ~'ina ~q) p)
+     (== a 'tau_a)]
+    [(== `(~'par ~q ~'ina) p)
+     (== a 'tau_a)]
+    [(fresh [p1 p2 q1 q2 x]
+       (nom/fresh [n]
+         (== `(~'par ~p1 ~p2) p)
+         (== a 'tau_a)
+         (== `(~'res ~(nom/tie n `(~'par ~q1 ~q2))) q)
+         (b-stepo p1 (nom/tie n `(~'in_a ~x ~n)) (nom/tie n q1))
+         (b-stepo p2 (nom/tie n `(~'out_a ~x ~n)) (nom/tie n q2))))]
+    [(fresh [p1 p2 q1 q2 x]
+       (nom/fresh [n]
+         (== `(~'par ~p1 ~p2) p)
+         (== a 'tau_a)
+         (== `(~'res ~(nom/tie n `(~'par ~q1 ~q2))) q)
+         (b-stepo p1 (nom/tie n `(~'out_a ~x ~n)) (nom/tie n q1))
+         (b-stepo p2 (nom/tie n `(~'in_a ~x ~n)) (nom/tie n q2))))]
+    [(fresh [p0 q0]
+       (nom/fresh [n]
+         (== `(~'res ~(nom/tie n p0)) p)
+         (== `(~'res ~(nom/tie n q0)) q)
+         (stepo p0 a q0)
+         (nom/hash n a)))]
+    [(fresh [x y]
+       (== `(~'out ~x ~y ~q) p)
+       (== a `(~'out_a ~x ~y)))]
+    [(fresh [p1 p2 q1 q2 r1 x y z]
+       (nom/fresh [y]
+         (== `(~'par ~p1 ~p2) p)
+         (== a 'tau_a)
+         (== `(~'par ~r1 ~q1) q)
+         (b-stepo p1 (nom/tie y `(~'in_a ~x ~y)) (nom/tie y q1))
+         (stepo p2 `(~'out_a ~x ~z) q2)
+         (renameo y z q1 r1)))]
+    [(fresh [p1 p2 q1 q2 r2 x z]
+       (nom/fresh [y]
+         (== `(~'par ~p1 ~p2) p)
+         (== a 'tau_a)
+         (== `(~'par ~q1 ~r2) q)
+         (b-stepo p2 (nom/tie y `(~'in_a ~x ~y)) (nom/tie y q2))
+         (stepo p1 `(~'out_a ~x ~z) q1)
+         (renameo y z q2 r2)))]))
+#+END_SRC
+
+这是 60 行代码, 几乎是 alphaProlog 的 3 倍!
+
+虽然可以使用 defne 模式匹配语法糖对其进行部分清理, 但还需要更多工作. 也许我们应该提供一个 letsyn 宏, 以智能地处理未引用的变量. letfn 和 defne 都应该支持简单的可扩展解析.
+
+清理后的 pi 演算步骤关系可能如下所示:
+
+#+BEGIN_SRC clojure
+(defne stepo [p a q]
+  (['(tau ~q) 'tau_a _])
+  (['(sum ~p1 ~p2)] (stepo p1 a q))
+  (['(par ~p1 ~p2)] (stepo p2 a q))
+  (['(par ~p1 ~p2) _ '(par ~q1 ~p2)] (stepo p1 a q1))
+  (['(par ~p1 ~p2) _ '(par ~p1 ~q2)] (stepo p2 a q2))
+  (['(par ina ~q) 'tau_a _])
+  (['(par ~q ina) 'tau_a _])
+  (['(par ~p1 ~p2) 'tau_a '(res (\n n (par ~q1 ~q2)))]
+     (letsyn [t0 (\ n (in_a ~x ~n))
+              t1 (\ n ~q1)
+              t2 (\ n (out_a ~x ~n))
+              t3 (\ n ~q2)]
+       (stepo' p1 t0 t1)
+       (stepo' p2 t2 t3)))
+  (['(par ~p1 ~p2) 'tau_a '(res (\ n (par ~q1 ~q2)))]
+     (letsyn [t0 (\ n (out_a ~x ~n))
+              t1 (\ n ~q1)
+              t2 (\ n (in_a ~x ~n))
+              t3 (\ n ~q2)]
+       (stepo' p1 t0 t1)
+       (stepo' p2 t2 t3)))
+  (['(res (nom/tie n p0)) _ '(res (\ n q0))]
+     (stepo p0 a q0)
+     (nom/hash n a))
+  (['(out ~x ~y ~q) '(out_a ~x ~y) _])
+  (['(par ~p1 ~p2) 'tau_a '(par ~r1 ~q1)]
+     (letsyn [t0 (\ y (in_a ~x ~y))
+              t1 (\ y ~q1)
+              t2 (out_a ~x ~z)]
+       (stepo' p1 t0 t1)
+       (stepo p2 t2 q2)
+       (renameo y z q1 r1)))
+  (['(par ~p1 ~p2) 'tau_a '(par ~q1 ~r2)]
+     (letsyn [t0 (\ y (in_a ~x ~y))
+              t1 (\ y ~q2)
+              t2 (out_a ~x ~z)]
+       (stepo' p2 t0 t1)
+       (stepo p1 t2 q1)
+       (renameo y z q2 r2))))
+#+END_SRC
+
+我们将其缩减到了 39 行代码, 因此大约是 alphaProlog 冗长程度的两倍.
+
+更为激进的一步将是支持在每个子句的主体上进行预处理阶段:
+
+#+BEGIN_SRC clojure
+(defne stepo [p a q]
+  (['(tau ~q) 'tau_a _])
+  (['(sum ~p1 ~p2)] (stepo p1 a q))
+  (['(par ~p1 ~p2)] (stepo p2 a q))
+  (['(par ~p1 ~p2) _ '(par ~q1 ~p2)] (stepo p1 a q1))
+  (['(par ~p1 ~p2) _ '(par ~p1 ~q2)] (stepo p2 a q2))
+  (['(par ina ~q) 'tau_a _])
+  (['(par ~q ina) 'tau_a _])
+  (['(par ~p1 ~p2) 'tau_a '(res (nom/tie n (par ~q1 ~q2)))]
+   (stepo' p1 (nom/tie n (in_a ~x ~n)) (nom/tie n ~q1))
+   (stepo' p2 (nom/tie n (out_a ~x ~n)) (nom/tie n ~q2)))
+  (['(par ~p1 ~p2) 'tau_a '(res (nom/tie n (par ~q1 ~q2)))]
+   (stepo' p1 (nom/tie n (out_a ~x ~n)) (nom/tie n ~q1))
+   (stepo' p2 (nom/tie n (in_a ~x ~n)) (nom/tie n ~q2)))
+  (['(res (nom/tie n p0)) _ '(res (nom/tie n q0))]
+   (stepo p0 a q0)
+   (nom/hash n a))
+  (['(out ~x ~y ~q) '(out_a ~x ~y) _])
+  (['(par ~p1 ~p2) 'tau_a '(par ~r1 ~q1)]
+   (stepo' p1 (nom/tie y (in_a ~x ~y)) (nom/tie y ~q1))
+   (stepo p2 (out_a ~x ~z) q2)
+   (renameo y z q1 r1))
+  (['(par ~p1 ~p2) 'tau_a '(par ~q1 ~r2)]
+   (stepo' p2 (nom/tie y (in_a ~x ~y)) (nom/tie y ~q2))
+   (stepo p1 (out_a ~x ~z) q1)
+   (renameo y z q2 r2)))
+#+END_SRC
+
+这是 25 行代码, 仅比 alphaProlog 稍显冗长. 因为我们想要支持多个预处理器, 所以我们不能对 nom/tie 使用像 \ 这样的短名称. 目前来看, 预处理阶段似乎比 letsyn 更有吸引力.
+
+接下来是预处理器 API 和扩展可能的样子草图:
+
+#+BEGIN_SRC clojure
+(defmethod preprocess 'unquote
+  [env sym]
+  {:env (update-in env [:scope :fresh] conj nom)
+   :form sym})
+
+(defmethod preprocess :default
+  [env [x & xs]]
+  {:env env
+   :form `('~x ~@(map preprocess xs))})
+
+(defmethod preprocess 'nom/tie
+  [env [nom body]]
+  {:env (update-in env [:noms] conj nom)
+   :form `(nom/tie ~nom ~(preprocess body))})
+
+(defmethod emit-scope [:scope :fresh]
+  [vs body]
+  `(clojure.core.logic/fresh [~@vs]
+     ~body))
+
+(defmethod emit-scope [:scope :nom]
+  [vs body]
+  `(clojure.core.logic.nominal/fresh [~@vs]
+     ~body))
+#+END_SRC
+
+正如 Nada Amin 指出的那样, 这是另一个不错的增强功能. 在 alphaProlog 代码中, 没有必要对参数进行命名.
+
+#+BEGIN_SRC clojure
+step (sum (P, Q)) A (P') :- step P A P'.
+#+END_SRC
+
+而这转化为:
+
+#+BEGIN_SRC clojure
+(defne stepo [p a q]
+  ...
+  (['(sum ~p1 ~p2)] (stepo p1 a q))
+  ...)
+#+END_SRC
+
+但是如果 defne 支持省略向量, 我们可以这样做:
+
+#+BEGIN_SRC clojure
+(defne stepo
+  ...
+  (['(sum ~p ~q) a p'] (stepo p a p'))
+  ...)
+#+END_SRC
+
+我们可以通过从模式中推断参数向量来实现这一点.
+
+* [[https://github.com/clojure/core.logic/wiki/CLP(Prob)][概率约束逻辑编程 CLP(Prob)]]
+
+我们应该看看 HANSEI, Church, Prism, ProbLog, CLP(BN) 以及所有其他有趣的概率逻辑编程方法.
+
+马尔可夫链蒙特卡罗(Markov Chain Monte Carlo)和吉布斯采样(Gibbs Sampling)似乎是最近的热门话题. 有趣的是, 已经有一些有前景的工作在 GPU 上执行这些操作.
+
+该领域的现有项目 (Existing Projects in the space)
+
+
+Nils Bertschinger 的工作 (Nils Bertschinger's Work)
+
+
+Nils 已经在 Clojure 中编写了一个非常巧妙的概率嵌入.
+
+
+该方法是创建一个程序, 其中每个随机元素(选择点)及其相关的随机元素都被注释. 整个程序被视为在 MH(Metropolis-Hastings)算法中生成单个样本. 通过选择一个选择点, 对其随机变量(RV)进行局部提议, 并计算下游变化来生成提议, 然后在 MH 框架中接受/拒绝该提议.
+
+漫谈 (Ramblings)
+
+
+ 计算使用像 Flow 或 Graph 这样的结构来指定, 这可以避免吗?
+
+Church
+
+
+
+Infer.net
+
+
+Infer.net 是微软在 F# 中的概率编程语言
+
+
+Stan
+
+
+基于哈密顿蒙特卡罗(Hamiltonian Monte Carlo)的新项目, 在具有相关变量的情况下具有优势.
+
+
+Bugs 和 JAGS
+
+
+一种基于吉布斯采样的概率编程语言, BUGS 已经被使用了很长时间. 一个更近期的实现是 JAGS, 它在很大程度上取代了 BUGS. 它们的优点是你可以毫不费力地在 R 中运行它们.
+
+ 下面的博客文章.
+
+* [[https://github.com/clojure/core.logic/wiki/CLP(Set)][集合约束逻辑编程 CLP(Set)]]
+
+CLP(Set) 将是开箱即用的约束求解器的一个受欢迎的补充. 它将消除您经常在 core.logic 代码中看到的对 membero 的低效使用.
+
+对于完全基础(ground)集合的 CLP(Set) 并不困难, 并且可以很容易地通过 Constraints & Modes 实现. 然而, 允许部分实例化集合的 CLP(Set) 将非常强大, 并能支持编写一些非常有用的源码分析工具.
+
+想象以下代码:
+
+#+BEGIN_SRC clojure
+(unionc seta setb oset)
+#+END_SRC
+
+如果 seta 和 setb 是完全基础的, 那么就没有什么可做的了. 但是, 让我们假设 seta 和 setb 如下所示:
+
+#+BEGIN_SRC clojure
+seta = #{:cat x y}
+setb = #{:dog :bird z}
+#+END_SRC
+
+这里我们有三个新鲜(fresh)变量. 我们立刻就能知道一些事情:
+
+oset 的大小可以是 3, 4, 5 或 6.
+
+这些可能性看起来像这样:
+
+#+BEGIN_SRC clojure
+#{:cat :dog :bird}
+#{:cat :dog :bird x}
+#{:cat :dog :bird y}
+#{:cat :dog :bird z}
+#{:cat :dog :bird x y}
+#{:cat :dog :bird x z}
+#{:cat :dog :bird y z}
+#{:cat :dob :bird x y z}
+#+END_SRC
+
+因此, 如果 oset 曾与大于 6 或小于 3 的集合进行统一(unify), 我们可以立即失败. 如果 oset 与特定大小的集合统一, 我们可以丢弃非该大小的其他可能性. 复杂之处在于仅有这些可能性是不够的, 每种可能性都伴随着变量赋值的排列.
+
+例如, 对于第一种情况, 我们有以下变量赋值的排列:
+
+#+BEGIN_SRC clojure
+x = :dog,  y = :bird, z = :cat
+x = :dog,  y = :cat,  z = :bird
+x = :bird, y = :dog,  z = :cat
+x = :bird, y = :cat,  z = :dog
+x = :cat,  y = :dog,  z = :bird
+x = :cat,  y = :bird, z = :dog
+#+END_SRC
+
+我们已经尝到了这可能会呈指数级增长的滋味. 似乎一般而言, 随着集合大小变大, 排列会变小, 例如在 ~#{:cat :dog :bird x y}~ 的情况下, 我们知道 z 必定是 ~:cat~.
+
+尽管如此, 除非必须, 否则我们不想做这些工作. 所以我们可以借鉴 cKanren 的做法--我们在具体化(reification)之前实际上并不枚举这些可能性, 通过延迟这个过程, 我们希望能够充分约束 oset 以消除毫无意义的排列.
+
+有很多方法可以约束 oset. 如果任何涉及的变量变得基础(ground), 我们就能知道几件事--关于集合大小更精确的概念, 以及哪些可能性和排列不适用.
+
+因此我们可以想象一系列新的域类型来支持 CLP(Set), 类似于 CLP(FD) 具有的一系列数据类型. 这些域类型可以存储集合的大小以及排列中涉及的剩余变量.
+
+注意, 我们可以想象最复杂的情况--两个此类新集合域类型的笛卡尔积, 即:
+
+#+BEGIN_SRC clojure
+(unionc seta setb setc)
+#+END_SRC
+
+其中 seta 和 setb 不是基础的, 并且已经有了集合域. 如果 setc 在 seta 或 setb 变为基础之前达到了具体化(reification), 这将会很慢--而这应在意料之中.
+
+Unification (统一)
+
+
+考虑上面的 oset 和下面的统一, 其中 p 和 q 是新鲜(fresh)的, 且不等于 x, y 或 z:
+
+#+BEGIN_SRC clojure
+(== oset {:cat p q})
+#+END_SRC
+
+很显然, 只有第一种情况适用, 即大小为 3 的集合. 最有效的做法是给 p 和 q 提供延迟域, 只要 oset 变得基础(ground), p 和 q 就承担 oset 中除了 `:cat` 之外的值. 在这里, 我们在 p 和 q 之间再次拥有隐式的 distinctfd 约束.
+
+请注意, 这意味着我们根本没有实际实现集合的统一. 相反, 统一将触发对 oset 的约束, 这将在 p 和 q 上添加一个约束, 赋予它们来自 oset(不包括 `:cat`)的可能值的域.
+
+这意味着使用上述方法来检查集合成员资格将是一个反模式. 如果用户想检查项目 `:cat` 的存在性, 他们应该使用更高效的 memberc 约束:
+
+#+BEGIN_SRC clojure
+(memberc oset :cat)
+#+END_SRC
+
+Difference & Intersection (差集与交集)
+
+
+基于以上例子的可能性及变量赋值排列如下:
+
+#+BEGIN_SRC clojure
+#{}
+#{x}
+#{y}
+#{x y}
+#{:cat}
+#{:cat x}
+#{:cat y}
+#{:cat x y}
+#+END_SRC
+
+CLP(FD) & CLP(Set) Implementation correlation (CLP(FD) 和 CLP(Set) 实现的相关性)
+
+
+似乎在 CLP(Set) 和 CLP(FD) 之间会有一些深层的关联, 至少就涉及的类型性质而言. 例如在 CLP(FD) 中, 我们有单例域(singleton domain)的概念, 如 1. 但对于单个 Clojure 集合也是如此, 它有点像" 单例" 集合域, 只有一种可能性.
+
+然后我们有更复杂的集合域类型, 这就像 IntervalFD. 最后我们有笛卡尔积, 这似乎非常对应 MultiIntervalFD.
+
+我们可以很容易地想象两个集合域的笛卡尔积的统一, 以便将大小信息传播到基础集合. 当时肯定还有其他我没能想到的传播机会.
+
+* [[https://github.com/clojure/core.logic/wiki/Constraints-&-modes][Constraints & modes]]
+
+由于其 Prolog 和 Scheme 的根源, 遗憾的是 core.logic 至今仍在强调对类似序列的数据结构进行操作. 这通常会导致性能比预期的要差得多. 既然我们有了约束(constraints), 应该可以编写 Clojure 函数的约束版本了.
+
+目前我们在 master 分支中有一个相当无用的实验性 ~defc~. 它要求所有参数在执行前都完全基础化(ground). 如果有一个支持"模式(mode)" 声明的 ~defc~ 会怎样呢?
+
+#+BEGIN_SRC clojure
+(defc assocc
+  [^partial m ^ground k v o]
+  ...
+  [m ^ground k v ^partial o]
+  ...)
+#+END_SRC
+
+当满足其中一个模式时, 约束的主体(body)就会运行. 我们可能可以利用模式信息自动生成 ~IRunnable~ 实现的主体.
+
+复杂情况(Complications)
+
+
+事实证明, 实现 ~assoc~ 并不像听起来那么简单. 当" 反向(reverse)" 进行时, 如果 ~assocc~ 的第一个参数是新鲜(fresh)的, 实际上会存在多种可能性. 这让我想到, 对此功能更好的测试方法是正确实现 ~conjo~, 它会在其输入和输出参数上具有多态性.
+
+想象以下情况, 其中 ~v~ 是新鲜的, 而 ~o~ 绑定到一个 map:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fresh [v o]
+    (== o {:foo 1})
+    (conjo q [:foo v] o)))
+#+END_SRC
+
+有两种可能性, 要么 ~q~ 是一个不包含该条目(entry)的 map, 要么它已经包含了某个目前未知值的条目. 所以我们应该看到以下结果:
+
+#+BEGIN_SRC clojure
+({} {:foo _0})
+#+END_SRC
+
+我们现在必须处理与 CLP(Set) 中存在的完全相同的问题.
+
+* [[https://github.com/clojure/core.logic/wiki/core.logic.nominal][core.logic.nominal · clojure/core.logic Wiki · GitHub]]
+
+标称逻辑编程(Nominal logic programming)特别适合于编写操作语义, 类型推断器以及其他必须对作用域和绑定进行推理的程序.
+
+core.logic.nominal 扩展了 core.logic, 增加了用于标称逻辑编程的三个原语: ~fresh~, ~hash~ 和 ~tie~. ~fresh~ 引入了新的 nom(标称名), ~hash~ 约束一个 nom 在项中是自由的(free), 而 ~tie~ 构造了一个绑定器(binder): 一个绑定了给定 nom 的项.
+
+Basics (基础)
+
+
+对于这些代码片段, 请如下设置您的命名空间:
+
+#+BEGIN_SRC clojure
+(ns nominal-tutorial
+  (:refer-clojure :exclude [==])
+  (:use [clojure.core.logic :exclude [is] :as l]
+        [clojure.core.logic.nominal :exclude [fresh hash] :as nom]
+        [clojure.test]))
+#+END_SRC
+
+就像一个独特的对象一样, nom 仅与自身或未绑定的变量统一(unify):
+
+#+BEGIN_SRC clojure
+(is (= (run* [q] (nom/fresh [a] (== a a))) '(_0)))
+(is (= (run* [q] (fresh [x] (nom/fresh [a] (== a x)))) '(_0)))
+(is (= (run* [q] (nom/fresh [a] (== a 5))) ()))
+(is (= (run* [q] (nom/fresh [a b] (== a b))) ()))
+#+END_SRC
+
+就像变量一样, 答案中的 nom 被具体化(reify)为一种规范形式, 前缀为 `a` 以区别于变量:
+
+#+BEGIN_SRC clojure
+(is (= (run* [q] (nom/fresh [b] (== b q))) '(a_0)))
+#+END_SRC
+
+绑定器与另一个绑定器在 alpha 等价(alpha-equivalence)的意义上统一:
+
+#+BEGIN_SRC clojure
+(is (= (run* [q] (nom/fresh [a b] (== (nom/tie a a) (nom/tie b b)) '(_0)))))
+(is (= (run* [q] (nom/fresh [a b] (== (nom/tie a b) (nom/tie b b)) ()))))
+(is (= (run* [q] (nom/fresh [a b] (== (nom/tie a b) (nom/tie b a)) ()))))
+#+END_SRC
+
+`#`(hash)约束确保给定项不包含给定 nom 的任何自由出现:
+
+#+BEGIN_SRC clojure
+(is (= (run* [q] (nom/fresh [a] (nom/hash a a))) ()))
+(is (= (run* [q] (nom/fresh [a b] (nom/hash a b))) '(_0)))
+(is (= (run* [q] (nom/fresh [a b] (nom/hash a (nom/tie a a)))) '(_0)))
+#+END_SRC
+
+像其他约束一样, `#` 约束可以被传播(propagated)和具体化(reified).
+
+#+BEGIN_SRC clojure
+(is (= (run* [q] (fresh [x] (nom/fresh [a] (nom/hash a x) (== q [a x]))))
+      '(([a_0 _1] :- a_0#_1))))
+(is (= (run* [q] (fresh [x y] (nom/fresh [a b] (nom/hash a [x y b]) (== q [a b x y]))))
+      '(([a_0 a_1 _2 _3] :- a_0#_3 a_0#_2))))
+#+END_SRC
+
+为简单起见, 我们仅在其 nom 和变量也被具体化时, 才具体化 `#` 约束:
+
+#+BEGIN_SRC clojure
+(is (= (run* [q] (fresh [x y] (nom/fresh [a b] (nom/hash a [x y b])))) '(_0)))
+#+END_SRC
+
+Under the leaky hood (揭开内幕)
+
+
+标称统一将 alpha 等价的绑定器视为相等. 当不同 nom 的绑定器包含变量时, 它是如何工作的呢? 让我们试试看:
+
+#+BEGIN_SRC clojure
+(is (= (run* [q]
+         (fresh [x y]
+           (nom/fresh [a b]
+             (== (nom/tie a x) (nom/tie b y))
+             (== [a b x y] q))))
+      '(([a_0 a_1 _2 _3] :- a_1#_2 (swap [a_0 a_1] _3 _2)))))
+#+END_SRC
+
+这个例子读作: 当 ~a#y~ 且交换(swap)~[a b] x y~ 时, ~[a] x~ 和 ~[b] y~ 统一. ~swap [a b] x y~ 约束表示一个挂起(suspension): 一旦 ~x~ 和 ~y~ 被绑定, 我们希望在对称地同时交换所有的 ~a~ 和 ~b~ 后, 检查 ~x~ 是否与 ~y~ 统一. ~a#y~ 约束确保既然 ~a~ 不能在 ~[a] x~ 中自由出现, 那么 ~a~ 也不应在 ~[b] y~ 中自由出现. 对称地, 我们本可以使用 ~b#x~ 代替. 这种 ~#~ 约束阻止了将 ~[a] b~ 与 ~[b] a~ 统一, 而交换使得将 ~[a] a~ 与 ~[b] b~ 统一成为可能.
+
+如果 ~x==y~ 怎么办? 让我们试试看:
+
+#+BEGIN_SRC clojure
+(is (= (run* [q]
+         (fresh [x y]
+           (nom/fresh [a b]
+             (== (nom/tie a x) (nom/tie b y))
+             (== [a b x y] q)
+             (== x y))))
+      '(([a_0 a_1 _2 _2] :- a_1#_2 a_0#_2 a_1#_2 a_0#_2 a_1#_2))))
+#+END_SRC
+
+(请注意, 答案中重复的约束只是一种低效的体现, 并增加了破译的不便. )这个例子读作: 如果 ~a#x~ 且 ~b#x~, 则 ~[a] x~ 和 ~[b] x~ 统一. 确实, ~a~ 不能在 ~[a] x~ 中自由出现, 并且 ~b~ 不能在 ~[b] x~ 中自由出现.
+
+总结上述例子的发现, 标称统一是通过 nom 交换(nom-swaps)和 ~#~ 约束来指定的.
+
+两个绑定器 ~t1~ 和 ~t2~ 统一的条件是:
+
+
+交换操作引入了挂起, 因为当我们在交换期间遇到变量时, 我们必须延迟交换直到该变量被绑定.
+
+在 core.logic.nominal 中, 我们将挂起实现为约束. 在交换 ~a~ 和 ~b~ 期间, 每当遇到变量 ~x~, 我们将其替换为新的(fresh)变量 ~x'~, 并添加挂起约束 =swap [a b] x' x=. 此交换约束在以下两个条件之一满足时执行:
+
+* [[https://github.com/clojure/core.logic/wiki/Development][开发路线图 Development]]
+
+路线图 (Roadmap)
+
+
+近期 (Immediate)
+
+
+
+有趣的分支 (Interesting Branches)
+
+
+
+未来 (Future)
+
+
+ 基础性分析(groundness analysis), 或者可能是因为我们没有修剪环境中不必要的逻辑变量. 看起来原始的 Kanren 论文可能有一些好的方法.
+ 缩小 SWI-Prolog 和 miniKanren 之间的许多性能差距. 然而, 保持正确性似乎很困难.
+ 也许将优化限制在 DCG(确定性子句语法)和模式匹配语法糖上. 同样, 原始的 Kanren 论文可能在这里提供了一些见解.
+
+问题与贡献 (Issues & Contributing)
+
+
+请使用 JIRA 提交工单 (tickets).
+
+如果您想做出贡献, 请提交您的 贡献者协议 (Contributor Agreement).
+
+* [[https://github.com/clojure/core.logic/wiki/Differences-from-The-Reasoned-Schemer][和TRS的差异 Differences from The Reasoned Schemer]]
+
+以下是与<The Reasoned Schemer>(简称 TRS)中描述的 miniKanren 版本之间最重要的区别.
+
+ 当您使用 conde 时, 结果的顺序可能与书中显示的顺序不匹配.
+ llist 是一个便捷的宏, 它会展开为嵌套的 lcons 表达式.
+
+例如, TRS 2-52(第 2 章, #52)在 Scheme 中是这样写的:
+
+#+BEGIN_SRC scheme
+  (run #f (r)
+    (fresh (x y)
+      (== (cons x (cons y 'salad)) r)))
+#+END_SRC
+
+在 core.logic 中可以这样写:
+
+#+BEGIN_SRC clojure
+(run* [r]
+  (fresh [x y]
+    (== (lcons x (lcons y 'salad)) r)))
+#+END_SRC
+
+TRS 3-10 在 Scheme 中是这样写的:
+
+#+BEGIN_SRC scheme
+(run 1 (x)
+  (listo `(a b c . ,x)))
+#+END_SRC
+
+在 core.logic 中可以这样写:
+
+#+BEGIN_SRC clojure
+(run 1 [x]
+  (listo (llist 'a 'b 'c x)))
+#+END_SRC
+
+没有谓词 pair?, 但是您可以通过以下代码自己提供一个:
+
+#+BEGIN_SRC clojure
+(defn pair? [x]
+   (or (lcons? x) (and (coll? x) (seq x))))
+#+END_SRC
+
+与此相关, 如 TRS 3-1 所示实现 list? 是不必要的. 在 Clojure 中, seq? 更为合适. 这是因为在 Clojure 中, 类似列表的适当结构和数据对(pairs)并没有像在 Scheme 中那样被混为一谈. 通常在阅读和练习 TRS 时, 您不应使用向量(vectors). 请使用 list 或带引号的列表. 使用 Scheme 准引用(quasiquote)的 TRS 示例需要这样编写(TRS 3-7):
+
+#+BEGIN_SRC clojure
+(run* [x]
+   (listo (list 'a 'b x 'd)))
+#+END_SRC
+
+* [[https://github.com/clojure/core.logic/wiki/Entanglement][Entanglement]]
+
+master 分支中的纠缠(entanglement)实现是呈指数级的, 因为我们直接在变量(var)上存储纠缠变量集(entangled var set)的信息. 因此, 如果在 eset 中有 9 个变量, 一次 update-dom 调用就会触发大量不必要的计算.
+
+更好的实现方法是将纠缠变量集存储在其他地方. 这就需要考虑数据结构的表示. 我们不能完全像约束存储(constraint store)那样处理, 因为如果属于两个不同 eset 的两个变量发生纠缠, 我们需要将这些 eset 合并在一起. 不过, 我们可以通过设计, 使查找次数永远不会超过两次.
+
+请考虑以下情况:
+
+#+BEGIN_SRC clojure
+{a 0 b 0 c 0
+ x 1 y 1 z 1}
+#+END_SRC
+
+其中 0 指向 eset #{a b c}, 1 指向 eset #{x y z}. 现在想象 a 和 x 发生了纠缠. 我们可以合并这两个 eset 并添加一个新条目 2. 现在 0 会指向 2, 1 也会指向 2.
+
+我们可以想象另一个 eset #{p q r}, 其中的变量指向 3. 如果 p 与 a 发生纠缠, 那么我们只需要将 2 和 3 的内容合并, 然后添加新条目 4. 接着, 我们可以删除 2 及其存储的 eset, 并将 0, 1 和 3 都重新指向 4.
+
+更新的成本会随着必须合并的 eset 数量而增长. 在早期阶段防止 eset 合并的一种方法是设定一个阈值(例如 8). 在达到该阈值之前, 我们只更新单独的变量.
+
+* [[https://github.com/clojure/core.logic/wiki/Examples][例子 Examples]]
+
+一个经典的 AI 程序:
+
+#+BEGIN_SRC clojure
+(ns classic-ai-example
+   (:refer-clojure :exclude [==])
+   (:use clojure.core.logic))
+
+(defne moveo [before action after]
+  ([[:middle :onbox :middle :hasnot]
+    :grasp
+    [:middle :onbox :middle :has]])
+  ([[pos :onfloor pos has]
+    :climb
+    [pos :onbox pos has]])
+  ([[pos1 :onfloor pos1 has]
+    :push
+    [pos2 :onfloor pos2 has]])
+  ([[pos1 :onfloor box has]
+    :walk
+    [pos2 :onfloor box has]]))
+
+(defne cangeto [state out]
+  ([[_ _ _ :has] true])
+  ([_ _] (fresh [action next]
+           (moveo state action next)
+           (cangeto next out))))
+
+(run 1 [q]
+  (cangeto [:atdoor :onfloor :atwindow :hasnot] q)) ; (true)
+#+END_SRC
+
+数独
+
+#+BEGIN_SRC clojure
+(ns sudoku
+  (:refer-clojure :exclude [==])
+  (:use clojure.core.logic)
+  (:require [clojure.core.logic.fd :as fd]))
+
+(defn get-square [rows x y]
+  (for [x (range x (+ x 3))
+        y (range y (+ y 3))]
+    (get-in rows [x y])))
+
+(defn bind [var hint]
+  (if-not (zero? hint)
+    (== var hint)
+    succeed))
+
+(defn bind-all [vars hints]
+  (and* (map bind vars hints)))
+
+(defn sudokufd [hints]
+  (let [vars (repeatedly 81 lvar)
+        rows (->> vars (partition 9) (map vec) (into []))
+        cols (apply map vector rows)
+        sqs  (for [x (range 0 9 3)
+                   y (range 0 9 3)]
+               (get-square rows x y))]
+    (run 1 [q]
+      (== q vars)
+      (everyg #(fd/in % (fd/domain 1 2 3 4 5 6 7 8 9)) vars)
+      (bind-all vars hints)
+      (everyg fd/distinct rows)
+      (everyg fd/distinct cols)
+      (everyg fd/distinct sqs))))
+
+(def hints
+  [2 0 7 0 1 0 5 0 8
+   0 0 0 6 7 8 0 0 0
+   8 0 0 0 0 0 0 0 6
+   0 7 0 9 0 6 0 5 0
+   4 9 0 0 0 0 0 1 3
+   0 3 0 4 0 1 0 2 0
+   5 0 0 0 0 0 0 0 1
+   0 0 0 2 9 4 0 0 0
+   3 0 6 0 8 0 4 0 9])
+
+(sudokufd hints)
+;=>
+; ((2 6 7 3 1 9 5 4 8
+;   9 5 4 6 7 8 1 3 2
+;   8 1 3 5 4 2 7 9 6
+;   1 7 2 9 3 6 8 5 4
+;   4 9 5 8 2 7 6 1 3
+;   6 3 8 4 5 1 9 2 7
+;   5 4 9 7 6 3 2 8 1
+;   7 8 1 2 9 4 3 6 5
+;   3 2 6 1 8 5 4 7 9))
+#+END_SRC
+
+A type inferencer for the simply typed lambda calculus
+
+
+More information: https://github.com/frenchy64/Logic-Starter/wiki
+
+#+begin_src  clojure
+(ns simple-typed-lambda-calculus
+   (:refer-clojure :exclude [==])
+   (:use clojure.core.logic))
+
+(defna findo [x l o]
+  ([_ [[y :- o] . _] _]
+    (project [x y] (== (= x y) true)))
+  ([_ [_ . c] _] (findo x c o)))
+
+(defn typedo [c x t]
+  (conda
+    [(lvaro x) (findo x c t)]
+    [(matche [c x t]
+       ([_ [[y] :>> a] [s :> t]]
+          (fresh [l]
+            (conso [y :- s] c l)
+            (typedo l a t)))
+       ([_ [:apply a b] _]
+          (fresh [s]
+            (typedo c a [s :> t])
+            (typedo c b s))))]))
+
+(comment
+  ;; ([_.0 :> _.1])
+  (run* [q]
+    (fresh [f g a b t]
+     (typedo [[f :- a] [g :- b]] [:apply f g] t)
+     (== q a)))
+
+  ;; ([:int :> _.0])
+  (run* [q]
+    (fresh [f g a t]
+     (typedo [[f :- a] [g :- :int]] [:apply f g] t)
+     (== q a)))
+
+  ;; (:int)
+  (run* [q]
+    (fresh [f g a t]
+     (typedo [[f :- [:int :> :float]] [g :- a]]
+       [:apply f g] t)
+     (== q a)))
+
+  ;; ()
+  (run* [t]
+    (fresh [f a b]
+      (typedo [f :- a] [:apply f f] t)))
+
+  ;; ([_.0 :> [[_.0 :> _.1] :> _.1]])
+  (run* [t]
+    (fresh [x y]
+      (typedo []
+        [[x] :>> [[y] :>> [:apply y x]]] t)))
+  )
+#+end_src
+
+* [[https://github.com/clojure/core.logic/wiki/Extending-core.logic-(Datomic-example)][扩展 Extending core.logic (Datomic example)]]
+
+统一自定义数据结构
+
+core.logic 在设计时就考虑到了可扩展性. 您可能希望统一(unify)您自己的自定义数据结构, 而不仅仅是 Clojure 现有的数据结构. 为了说明如何做到这一点, 我们将使用 Datomic 数据项(datums)作为例子.
+
+在接下来的例子中, 我们假设您已经创建了一个 Datomic 测试数据库并且具有以下 ns 声明:
+
+#+BEGIN_SRC clojure
+(ns example
+  (:use [datomic.api :only [db q] :as d]
+        [clojure.core.logic]
+        [clojure.core.logic.datomic :only [datom?]]))
+
+(def uri "datomic:dev://localhost:4334/test")
+(def conn (d/connect uri))
+#+END_SRC
+
+为了让您的自定义数据结构能够参与统一, 它必须实现 ~IUnifyTerms~.
+
+我们可以像这样为 Datomic 数据项实现 ~IUnifyTerms~:
+
+#+BEGIN_SRC clojure
+(extend-type datomic.Datom
+  clojure.core.logic.protocols/IUnifyTerms
+  (unify-terms [u v s]
+    (unify-with-datom* u v s)))
+#+END_SRC
+
+这里的 ~u~ 当然是数据项, ~v~ 是要与之统一的另一个数据结构, ~s~ 是替换映射.
+
+这段代码简单地调用了我们稍后将定义的实际函数. 我们使用一个独立的函数, 以便其他类型可以在需要与 Datomic 数据项统一时重用它, 从而避免双重分发的开销.
+
+我们希望当遇到 ~clojure.lang.PersistentVector~ 的实例时, 统一可能成功, 因为数据项本身是 4 元素的元组. 现在我们实现一个简单的函数来完成这一操作. 请注意, 如果统一失败, 该函数应返回 ~false~(针对 0.7.5)或 ~nil~(针对 >= 0.8.0).
+
+#+BEGIN_SRC clojure
+(defn unify-with-datom* [u v s]
+  (when (and (instance? clojure.lang.PersistentVector v) (> (count v) 1))
+    (loop [i 0 v v s s]
+      (if (empty? v)
+        s
+        (when-let [s (unify s (first v) (nth u i))]
+          (recur (inc i) (next v) s))))))
+#+END_SRC
+
+~v~ 将会是 ~clojure.lang.PersistentVector~ 的实例, ~u~ 将是数据项, ~s~ 会是当前的替换映射. 应当清楚, 数据项只能与含有正好四个元素的 ~clojure.lang.PersistentVector~ 实例成功统一. 这段代码只不过是对当前替换映射中的每个元素进行统一 -- 从而创建一个必须在下一次统一尝试中使用的新替换映射. 如果 ~v~ 和 ~u~ 中的所有元素都成功统一, 我们将返回这个新的(可能已更改的)替换映射.
+
+统一是一个二元操作 -- 我们必须处理数据项作为左操作数或右操作数出现的可能性. 请注意这里使用了来自 clojure.core.logic 的 ~unify-with-sequential*~.
+
+#+BEGIN_SRC clojure
+(extend-type clojure.lang.PersistentVector
+  clojure.core.logic.protocols/IUnifyTerms
+  (unify-terms [u v s]
+    (if (datom? v)
+      (unify-with-datom* v u s)
+      (when (sequential? v)
+        (unify-with-sequential* u v s)))))
+#+END_SRC
+
+这就是全部内容. 数据项现在就可以参与统一了.
+
+自定义数据源
+
+为了能够对 Datomic 编写任何有趣的关系型程序, 我们需要能够与外部数据源进行统一. 这可以通过 ~to-stream~ 来完成.
+
+#+BEGIN_SRC clojure
+(defn datomic-rel [q]
+  (fn [a]
+    (l/to-stream
+      (map #(l/unify a % q) (d/datoms (db conn) :eavt)))))
+#+END_SRC
+
+~to-stream~ 能够创建一个适用于 core.logic 操作的选项流. 它可以接受任何基于 seq 的数据结构. 在这个例子中, 我们只是从 Datomic 中读取原始的索引数据. 我们将每个数据项与闭包外的参数 ~q~ 进行统一. 这一点非常重要 -- core.logic 的关系不过就是闭包而已. 它们必须返回一个只接受单个参数(在本例中为 ~a~)的函数, 该参数即当前的替换映射.
+
+现在您就可以对 Datomic 运行 core.logic 查询了:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fresh [e a v t]
+    (== v true)
+    (datomic-rel [e a v t])
+    (== q [e a v t])))
+#+END_SRC
+
+* [[https://github.com/clojure/core.logic/wiki/External-solvers][外部求解器 External solvers]]
+
+[[http://jacop.osolpro.com/][JaCoP]] 是一个用纯 Java 编写的有限域求解器, 自 2001 年以来一直在持续开发中. 在每年的 [[http://www.minizinc.org/][MiniZinc]] 约束挑战赛中, 它在过去三年中均获得了固定类别的银奖.
+
+一些基础测试似乎表明, 在解决有限域问题时, JaCoP 比 core.logic 快 10 到 100 倍. 虽然要提高 core.logic 通用约束框架的性能还有大量工作要做, 但在不久的将来我们不太可能达到 JaCoP 的有限域求解性能. 因此, 集成 JaCoP 是非常有吸引力的.
+
+需要进行更多研究来确定这种集成应该是什么样子, 以及需要修改 core.logic 中的哪些假设以允许任何此类集成.
+
+* [[https://github.com/clojure/core.logic/wiki/Features][功能 Features]]
+
+Simple in-memory database (简单的内存数据库)
+
+
+有时候, 创建一个你想要运行查询的事实列表是很有用的. 使用 db-rel 和 db-fact.
+
+#+BEGIN_SRC clojure
+(require '[clojure.core.logic.pldb :as pldb])
+
+(pldb/db-rel man p)
+(pldb/db-rel woman p)
+(pldb/db-rel likes p1 p2)
+(pldb/db-rel fun p)
+
+(def facts0
+  (pldb/db
+   [man 'Bob]
+   [man 'John]
+   [man 'Ricky]
+
+   [woman 'Mary]
+   [woman 'Martha]
+   [woman 'Lucy]
+
+   [likes 'Bob 'Mary]
+   [likes 'John 'Martha]
+   [likes 'Ricky 'Lucy]))
+
+(def facts1 (-> facts0 (pldb/db-fact fun 'Lucy)))
+
+(pldb/with-db facts1
+  (run* [q]
+    (fresh [x y]
+      (fun y)
+      (likes x y)
+      (== q [x y])))) ; ([Ricky Lucy])
+#+END_SRC
+
+重要的是为关系建立索引, 这样运行查询的时间就不会随事实的数量呈线性增长. 你可以为事实元组的任何元素创建索引. 请注意, 这对内存使用有一定的影响.
+
+#+BEGIN_SRC clojure
+(pldb/db-rel likes ^:index p1 ^:index p2)
+#+END_SRC
+
+A la carte unifier (单点统一器)
+
+
+core.logic 附带了一个统一器, 使用方式非常类似于 core.unify:
+
+#+BEGIN_SRC clojure
+(unifier '(?x ?y ?z) '(1 2 ?y)) ; (1 2 _.0)
+#+END_SRC
+
+Constraint Logic Programming (CLP) (约束逻辑编程)
+
+
+core.logic 对不同形式的约束逻辑编程(简称 CLP)的支持在快速发展. core.logic 被设计成可扩展到不同的约束域. 它开箱即用地支持树上的不等式约束(称为 CLP(Tree))和有限域上的约束(称为 CLP(FD)).
+
+CLP(Tree)
+
+
+CLP(Tree) 非常简单, 只添加了一个新操作符 !=. 给定两个项, 使用 != 操作符将保证这两个项永远不会统一, 在某种意义上, 这与统一操作符 == 所提供的功能" 相反" .
+
+最直接的用法就是检查某物不等于其他某个简单的值.
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (!= q 1)) ; => ((_0 :- (!= _0 1)))
+#+END_SRC
+
+这种奇怪的返回值发生在一个从未被赋予特定值的变量上施加了约束时. 这可以被理解为" 任何东西" , 只要这个" 任何东西" 不等于 1.
+
+你当然可以在复杂得多的项上使用不等式约束:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fresh [x y]
+    (!= [1 x] [y 2])
+    (== q [x y])))
+#+END_SRC
+
+这与你第一眼看到的可能有些许不同. 它实际上应该读作: " x 等于 2 且 y 等于 1 的情况永远不应该发生. " 因此, 如果 y 被统一为值 3, 这整个约束就可以被丢弃. 然而, 如果 y 被统一为 1, 那么该约束将继续检查以确保 x 永远不会被统一为 2.
+
+CLP(FD)
+
+
+core.logic 现在具有在有限域(即正整数)上进行约束逻辑编程的有用操作符. 在加入这些内容之前, 算术通常需要大量使用 project, 从而使这些 core.logic 程序变得非关系型.
+
+core.logic 在 clojure.core.logic.fd 命名空间中包含以下 CLP(FD) 操作符: +, -, *, quot, ==, !=, <, <=, >, >= 和 distinct. 以下示例假设您已经引入了 clojure.core.logic.fd 命名空间并将其别名为 fd.
+
+为了在逻辑变量上使用这些有限域操作符, 必须使用 fd/in 声明定义域.
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fd/in q (fd/interval 1 5))) ; => (1 2 3 4 5)
+#+END_SRC
+
+一个非常简单的示例可以快速揭示此功能的趣味性:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fresh [x y]
+    (fd/in x y (fd/interval 1 10))
+    (fd/+ x y 10)
+    (== q [x y]))) ; => ([1 9] [2 8] [3 7] [4 6] [5 5] [6 4] [7 3] [8 2] [9 1])
+#+END_SRC
+
+此外还包括一个用于编写方程的宏, 以消除从仅具有两三个参数的约束操作中输入带来的繁琐, 目前还没有可变参数的 CLP(FD) 操作符. 即使有, 您仍然需要创建新鲜的, 临时的中间变量, 以在各种操作符之间进行通信.
+
+这就轮到 fd/eq 登场了. fd/eq 是一个宏, 允许您以正常的 Lisp 语法编写算术表达式, 这些表达式将被展开为一系列合适的 CLP(FD) 操作符. 它将为您创建临时的中间变量, 并应用域推断.
+
+因此您可以写出以下代码:
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fresh [x y]
+    (fd/in x y (fd/interval 0 9))
+    (fd/eq
+      (= (+ x y) 9)
+      (= (+ (* x 2) (* y 4)) 24))
+    (== q [x y])))
+#+END_SRC
+
+distinct 是一个特别有用的约束, 它保证传递给它的所有有限域变量都不会呈现相同的值.
+
+#+BEGIN_SRC clojure
+(run* [q]
+  (fresh [x y]
+    (fd/in x y (fd/interval 1 10))
+    (fd/+ x y 10)
+    (fd/distinct [x y])
+    (== q [x y]))) ; => ([1 9] [2 8] [3 7] [4 6] [6 4] [7 3] [8 2] [9 1])
+#+END_SRC
+
+请注意 [5 5] 已不再包含在返回的解集中.
+
+Tabling (制表/记忆化)
+
+
+自 0.5.4 版本起, core.logic 支持制表(tabling). 如果你创建一个基于制表的目标, 某些在 Prolog 中无法终止的逻辑程序在 core.logic 中可以终止.
+
+#+BEGIN_SRC clojure
+(defne arco [x y]
+  ([:a :b])
+  ([:b :a])
+  ([:b :d]))
+
+(def patho
+  (tabled [x y]
+    (conde
+     [(arco x y)]
+     [(fresh [z]
+        (arco x z)
+        (patho z y))])))
+
+;; (:b :a :d)
+(run* [q] (patho :a q))
+#+END_SRC
+
+Nominal Logic Programming (标称逻辑编程)
+
+
+自 0.8.0 版本起, core.logic 包含一个用于标称逻辑编程的扩展包 core.logic.nominal. 标称逻辑编程使编写必须推理绑定和作用域的程序变得更加容易. 举个例子, 可以定义替换(substitution)而无需担心变量捕获(variable capture):
+
+#+BEGIN_SRC clojure
+(defn substo [e new a out]
+  (conde
+    [(== ['var a] e) (== new out)]
+    [(fresh [y]
+       (== ['var y] e)
+       (== ['var y] out)
+       (nom/hash a y))]
+    [(fresh [rator ratorres rand randres]
+       (== ['app rator rand] e)
+       (== ['app ratorres randres] out)
+       (substo rator new a ratorres)
+       (substo rand new a randres))]
+    [(fresh [body bodyres]
+       (nom/fresh [c]
+         (== ['lam (nom/tie c body)] e)
+         (== ['lam (nom/tie c bodyres)] out)
+         (nom/hash c a)
+         (nom/hash c new)
+         (substo body new a bodyres)))]))
+
+(run* [q]
+  (nom/fresh [a b]
+    (substo ['lam (nom/tie a ['app ['var a] ['var b]])]
+            ['var b] a q)))
+;; => [['lam (nom/tie 'a_0 '(app (var a_0) (var a_1)))]]
+
+(run* [q]
+  (nom/fresh [a b]
+    (substo ['lam (nom/tie a ['var b])]
+            ['var a]
+            b
+            q)))
+;; => [['lam (nom/tie 'a_0 '(var a_1))]]
+#+END_SRC
+
+欲了解更多信息, 请访问 core.logic.nominal 的 wiki 页面.
+
+Definite Clause Grammars (Experimental) (确定性子句语法, 实验性)
+
+
+core.logic 具有用于解析的类 Prolog 确定性子句语法(Definite Clause Grammar). 在 core.logic 支持环境修剪(environment trimming)之前, 该功能应仅视为实验性功能.
+
+#+BEGIN_SRC clojure
+(def-->e verb [v]
+  ([[:v 'eats]] '[eats]))
+
+(def-->e noun [n]
+  ([[:n 'bat]] '[bat])
+  ([[:n 'cat]] '[cat]))
+
+(def-->e det [d]
+  ([[:d 'the]] '[the])
+  ([[:d 'a]] '[a]))
+
+(def-->e noun-phrase [n]
+  ([[:np d n]] (det d) (noun n)))
+
+(def-->e verb-phrase [n]
+  ([[:vp v np]] (verb v) (noun-phrase np)))
+
+(def-->e sentence [s]
+  ([[:s np vp]] (noun-phrase np) (verb-phrase vp)))
+
+(run* [parse-tree]
+  (sentence parse-tree '[the bat eats a cat] []))
+
+;; ([:s [:np [:d the] [:n bat]] [:vp [:v eats] [:np [:d a] [:n cat]]]])
+#+END_SRC
+
+* [[https://github.com/clojure/core.logic/wiki/Improving-the-constraint-framework][优化约束框架 Improving the constraint framework]]
+
+既然我们已经使用约束框架八个月了, 现在有一些更清晰的改进途径.
+
+root-var (根变量)
+
+
+随着改进的约束框架及其性能优势在 master 分支中落地, 我们应该仔细审视一下 root-var. YourKit 一直显示 root-var 和 root-val 在" 自身耗时 (Own Time)" 方面表现最差. 我们需要 root-var 的原因是由于变量别名 (var aliasing), 而需要 root-val 则是由于我们存储域 (domains) 的方式.
+
+然而, 我们已经在 addcg 中采用了将所有约束参数" 根化 (rooting)" 的方法. 也许 cgoal 可以代为执行此步骤, 并仅使用根变量来构建真正的约束. 这意味着约束调用路径上的任何东西都将被保证是一个根, 从而使对 root-var 的调用变得不必要.
+
+一个问题是, 这种优化可能对约束参数不是复杂项的 CLP(FD) 最有意义. 但也未必? 树约束 (Tree constraints) 倾向于将约束递归应用于子项, 而不是...(原文此处似有截断).
+
+Disjunctive Constraints (析取约束)
+
+
+不等式 (Disequality) 是一种析取约束. 目前我们的不等式实现涉及一些不优雅和低效的地方, 因为我们无法在当前框架中表达析取约束--只能表达合取约束 (conjuctive constraints). 我们希望表达: 如果某个约束的即使一个子约束得到满足, 该约束也就被满足了. 与此同时, 我们仍然希望以一种直接的方式对不等式约束进行具体化 (reify).
+
+Subsumed Constraints (被包含的约束)
+
+
+如果我们给每个约束一个标识符, 我们就可以知道某个约束是否已经在约束存储 (constraint store) 中.
+
+#+BEGIN_SRC clojure
+(+fd x y z) ;; identifier [+fd x y z]
+#+END_SRC
+
+这里的 +fd 是一个符号, 而 x, y, z 是根变量. 约束存储可以有一个新字段, 只需将这种表示形式存储在一个 Clojure 集合 (set) 中.
+
+也许这个系统对于不等式约束的包含关系来说足够好了, 因为我们将存储子约束? 如果是这样, 我们就可以避免在约束存储中对不等式约束进行规范化 (normalizing).
+
+* [[https://github.com/clojure/core.logic/wiki/Optimizations][优化项 Optimizations]]
+
+我脑海中有很多尚未有时间研究的优化方案.
+
+Pattern Matching (模式匹配)
+
+
+在 @timowest 的 symbol 仓库中, 我们有以下一段令人遗憾的代码:
+
+#+BEGIN_SRC clojure
+(defnu typedo
+  [env form new-env]
+  ([_ nil _] (== env new-env))
+  ([_ ['ns* ?name] _] (== env new-env))
+  ([_ ['comment . _] _] (== env new-env))
+  ([_ ['if . _] _] (ifo env form new-env))
+  ([_ ['fn* . _] _] (fno env form new-env))
+  ([_ ['let* . _] _] (leto env form new-env))
+  ([_ ['loop* . _] _] (loopo env form new-env))
+  ([_ ['recur* . _] _] (recuro env form new-env))
+  ([_ [?dot . _] _] (== ?dot '.) (dot env form new-env))
+  ([_ ['new . _] _] (newo env form new-env))
+  ([_ ['def . _] _] (defo env form new-env))
+  ([_ ['do . _] _] (doo env form new-env))
+  ([_ [?fn . _] _] (applyo env form new-env))
+  ([_ ['include . _] _] (includeo env form new-env))
+  ([_ ['array . _] _] (arrayo env form new-env))
+  ([_ ['struct . _] _] (structo env form new-env))
+  ([_ _ _] (condu ((fresh [type]
+                         (membero [form type] env)
+                         (== env new-env)))
+                  ((annotatedo env form new-env))
+                  ((literalo env form new-env)))))
+#+END_SRC
+
+这里为了性能使用了剪枝(Pruning)--这是因为只需要匹配一个分支. 但是如果 defne/a/u 能智能地索引它们的子句, 这将是不必要的. 我们应该扩展这些宏来执行分析步骤, 以便在运行时如果我们有一个(部分)实例化的项(ground term), 我们可以进行非常高效的调用并忽略其他分支.
+
+Constraints (约束)
+
+
+对 cKanren 工作的早期性能分析表明, 我们在寻找根变量(root vars)上花费了大量时间. 这在运行约束时尤其有害. 运行约束将涉及对 runnable? 的调用以及实际的调用, 最后是对 relevant? 的调用. 所有这三个操作都将涉及一遍又一遍地遍历变量和域. 虽然从设计的角度来看, 将这些关注点分开是很好的, 但这涉及了大量多余的工作.
+
+也许值得为理解 cKanren 架构如何工作的人研究一种优化--提供 IRunnable, IRelevant 和约束调用的缓存版本. 这些协议将看起来与它们的非缓存对应物相同, 除了增加一个缓存参数--一个可变数组或类似的东西. 然后在这些实现的函数体中, 实现者可以直接从缓存中立即获取相关的遍历/基于根的(walked/rooted)值/域等.
