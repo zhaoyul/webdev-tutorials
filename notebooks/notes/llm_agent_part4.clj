@@ -1,13 +1,27 @@
 ;; # 构建一个编码 Agent: 第 4 部分 - 一个基本可用的编码 Agent
 ;;
-;; 本笔记本用安全的临时目录模拟文件读/列/改工具, 展示编码 Agent 的基础能力。
+;; 本笔记本用安全的临时目录模拟文件读/列/改工具, 并使用 DeepSeek API 测试编码 Agent 能力。
 (ns notes.llm-agent-part4
   (:require [nextjournal.clerk :as clerk]
             [clojure.java.io :as io]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [notes.llm-agent-common :as common]
+            [clojure.data.json :as json])
   (:import (java.nio.file Files)))
 
+;; ## 共享配置
+
+^{::clerk/visibility {:code :show :result :hide}}
+(def deepseek-config common/deepseek-config)
+
+^{::clerk/visibility {:code :show :result :hide}}
+(def create-chat-completion common/create-chat-completion)
+
+^{::clerk/visibility {:code :show :result :hide}}
+(def add-message common/add-message)
+
 ;; ## 准备一个临时工作区
+
 ^{::clerk/visibility {:code :show :result :hide}}
 (def temp-root
   (Files/createTempDirectory "agent-demo" (into-array java.nio.file.attribute.FileAttribute [])))
@@ -20,6 +34,7 @@
        (str/join java.io.File/separator)))
 
 ;; ## 工具实现 (含 :tool 元数据)
+
 ^{::clerk/visibility {:code :show :result :hide}}
 (defn
   ^{:tool {:name "read_file"
@@ -74,6 +89,7 @@
             (str "已替换: " old_str " -> " new_str)))))))
 
 ;; ## 注册表 & 调度
+
 ^{::clerk/visibility {:code :show :result :hide}}
 (def tool-registry
   {"read_file" read-file*
@@ -87,7 +103,46 @@
     (f args)
     (str "未知工具: " tool-name)))
 
-;; ## 演示: 构建并修改 fizzbuzz.js
+^{::clerk/visibility {:code :show :result :hide}}
+(defn handle-tool-calls
+  "处理 LLM 返回的工具调用"
+  [assistant-message]
+  (when-let [tool-calls (:tool_calls assistant-message)]
+    (mapv (fn [tc]
+            (let [name (get-in tc [:function :name])
+                  args (json/read-str (get-in tc [:function :arguments]) :key-fn keyword)]
+              {:role "tool"
+               :tool_call_id (:id tc)
+               :content (invoke-tool name args)}))
+          tool-calls)))
+
+;; ## 工具定义列表 (用于 API)
+
+^{::clerk/visibility {:code :show :result :hide}}
+(def file-tools
+  [{:type "function"
+    :function {:name "read_file"
+               :description "Read file content"
+               :parameters {:type "object"
+                            :properties {:path {:type "string"}}
+                            :required ["path"]}}}
+   {:type "function"
+    :function {:name "list_files"
+               :description "List files in directory"
+               :parameters {:type "object"
+                            :properties {:path {:type "string"}}
+                            :required ["path"]}}}
+   {:type "function"
+    :function {:name "edit_file"
+               :description "Edit file by search and replace"
+               :parameters {:type "object"
+                            :properties {:path {:type "string"}
+                                         :old_str {:type "string"}
+                                         :new_str {:type "string"}}
+                            :required ["path" "old_str" "new_str"]}}}])
+
+;; ## 演示: 构建并修改 fizzbuzz.js (本地工具执行)
+
 ^{::clerk/visibility {:code :show :result :hide}}
 (def fizz-path (temp-path "fizzbuzz.js"))
 
@@ -111,9 +166,38 @@
 (def read-final
   (invoke-tool "read_file" {:path fizz-path}))
 
+;; ## 真实 DeepSeek API 测试: 让 LLM 使用文件工具
+
+^{::clerk/auto-expand-results? true
+  ::clerk/visibility {:code :show :result :show}}
+(def llm-file-demo
+  "测试 DeepSeek API 使用文件工具"
+  (let [messages [{:role "system"
+                   :content (str "You have access to file tools. Working directory: " (.toString temp-root))}
+                  {:role "user"
+                   :content "Read the file fizzbuzz.js and tell me what it does"}]
+        ;; 第一次调用 - LLM 决定使用 read_file
+        response1 (create-chat-completion messages deepseek-config :tools file-tools)
+        assistant-msg1 (-> response1 :choices first :message)
+        ;; 执行工具
+        tool-results (handle-tool-calls assistant-msg1)
+        ;; 构建包含工具结果的历史
+        history-with-results (reduce add-message messages (concat [assistant-msg1] tool-results))
+        ;; 第二次调用获取最终回复
+        response2 (when (seq tool-results)
+                    (create-chat-completion history-with-results deepseek-config :tools file-tools))]
+    {:llm_tool_calls (:tool_calls assistant-msg1)
+     :tool_execution_results tool-results
+     :final_response (when response2 (-> response2 :choices first :message :content))
+     :usage (:usage response1)}))
+
 ;; ## 结果说明
 ;; - create-file-step: 利用 edit_file 创建并写入 fizzbuzz.js
 ;; - list-after-create: 显示临时目录里的文件
 ;; - tighten-range: 再次 edit_file 将循环上限替换为 15
 ;; - read-final: 查看最终文件内容
-;; 通过简单的搜索替换工具, 即可驱动 LLM 写/改代码。
+;; - llm-file-demo: DeepSeek API 调用展示 LLM 自主使用文件工具
+
+(comment
+  (clerk/serve! {})
+  )

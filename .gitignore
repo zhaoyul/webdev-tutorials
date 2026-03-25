@@ -32,3 +32,5 @@
 /.clerk/
 /.clj-kondo/
 /.shadow-cljs/
+# LLM API config (contains secrets)
+llm-config.edn
