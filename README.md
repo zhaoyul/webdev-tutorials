@@ -45,6 +45,14 @@ yarn install
 
 ## 快速开始
 
+如果你还不确定该运行哪个入口, 先按目标选择:
+
+| 目标 | 推荐入口 | 说明 |
+| --- | --- | --- |
+| 边读边改 notebook | `clojure -M:dev` | 进入 REPL 后用 `user/start-clerk!` 和 `user/show-notebook` 打开具体页面. |
+| 只在浏览器里浏览教程 | `clojure -X:clerk ':browse?' true` | 直接启动 Clerk, 默认监听 `notebooks/` 并打开浏览器. |
+| 检查静态发布效果 | `clojure -X:nextjournal/clerk` | 构建静态 notebook 页面, 适合发布前预览. |
+
 ### 1. 启动开发 REPL
 
 ```sh
