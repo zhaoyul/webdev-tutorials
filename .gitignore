@@ -34,3 +34,11 @@
 /.shadow-cljs/
 # LLM API config (contains secrets)
 llm-config.edn
+
+# Gas Town (added by gt)
+.beads/
+.runtime/
+.claude/
+.logs/
+__pycache__/
+state.json
